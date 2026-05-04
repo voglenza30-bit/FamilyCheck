@@ -64,8 +64,8 @@ def analyze_result(category, score, total_q):
 
 # 3. 사이드바: 피검자 등록
 st.sidebar.header("📋 피검자 등록")
-user_name = st.sidebar.text_input("성함(이름)", value="박준우")
-user_birth = st.sidebar.text_input("생년월일(8자리)", value="19780731")
+user_name = st.sidebar.text_input("성함(이름)", value="홍길동")
+user_birth = st.sidebar.text_input("생년월일(8자리)", value="19990101")
 user_gender = st.sidebar.selectbox("성별 선택", ["남성", "여성"])
 # [추가] 관계 선택
 user_rel = st.sidebar.selectbox("검사자와의 관계", ["본인", "부", "모", "자녀", "남편", "아내", "기타"])

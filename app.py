@@ -9,7 +9,7 @@ import re
 st.set_page_config(page_title="가족 심리 진단 시스템 V1.8", layout="wide")
 
 # [핵심 수정] 구글 앱스 스크립트 URL을 꼭 넣어주세요!
-GOOGLE_SCRIPT_URL = "여기에_복사한_웹앱_URL을_넣으세요"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygBHnEGI0lfKX1jWkKHy9o4CHc-MiyfsqzEhRVPdzWDOdtOd31xbaQNIFwd_2rJy0YPA/exec"
 
 # 1. 데이터 로드 로직 (질문 번호 정제)
 def load_data():

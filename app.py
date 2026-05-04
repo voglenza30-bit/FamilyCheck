@@ -70,6 +70,23 @@ user_name = st.sidebar.text_input("성함(이름)", value="박준우")
 user_birth = st.sidebar.text_input("생년월일(8자리)", value="19780731")
 user_gender = st.sidebar.selectbox("성별 선택", ["남성", "여성"])
 
+# [추가] 관계 선택 항목
+user_rel = st.sidebar.selectbox("검사자와의 관계", ["본인", "부", "모", "자녀", "남편", "아내", "기타"])
+
+# ... (중략: 데이터 불러오기 및 질문지 로직) ...
+
+        if st.button("🚀 검사 결과 최종 전송 (구글 시트로 저장)"):
+            # 전송 데이터에 'relationship' 추가
+            payload = {
+                "user": {
+                    "name": user_name, 
+                    "birth": user_birth, 
+                    "gender": user_gender,
+                    "relationship": user_rel  # 관계 정보 포함
+                },
+                "scores": current_scores
+            }
+
 # [복구] 기존 파일 불러오기
 file_path = f"result_{user_name}_{user_birth}.json"
 if user_name and user_birth and os.path.exists(file_path):

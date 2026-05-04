@@ -6,7 +6,7 @@ import pandas as pd
 import re
 
 # 페이지 설정
-st.set_page_config(page_title="가족 심리 진단 시스템 V2.0", layout="wide")
+st.set_page_config(page_title="가족 심리 진단 시스템 V2.1", layout="wide")
 
 # [필수] 박준우님의 구글 웹 앱 URL을 따옴표 안에 꼭 넣어주세요
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygBHnEGI0lfKX1jWkKHy9o4CHc-MiyfsqzEhRVPdzWDOdtOd31xbaQNIFwd_2rJy0YPA/exec"
@@ -38,7 +38,7 @@ def load_data():
 
 db = load_data()
 
-# 2. 분석 엔진
+# 2. 정밀 분석 엔진 (점수 기반 리포트 생성)
 def analyze_result(category, score, total_q):
     res_db = db["results_db"]
     max_score = total_q * 4
@@ -56,14 +56,14 @@ def analyze_result(category, score, total_q):
         return f"위험 지수: {int(ratio*100)}/100", res_db["CLINICAL"].get(key, {})
     return "", {}
 
-# 3. 사이드바: 피검자 등록 (초기값 빈칸)
+# 3. 사이드바: 피검자 등록
 st.sidebar.header("📋 피검자 등록")
 user_name = st.sidebar.text_input("성함(이름)", value="", placeholder="성함을 입력하세요")
 user_birth = st.sidebar.text_input("생년월일(8자리)", value="", placeholder="예: 19800101")
 user_gender = st.sidebar.selectbox("성별 선택", ["남성", "여성"])
 user_rel = st.sidebar.selectbox("검사자와의 관계", ["본인", "부", "모", "자녀", "남편", "아내", "기타"])
 
-# [복구] 기존 파일 불러오기 버튼 로직
+# [개선] 기존 파일 불러오기 및 데이터 강제 주입
 if user_name and user_birth:
     file_path = f"result_{user_name}_{user_birth}.json"
     if os.path.exists(file_path):
@@ -71,20 +71,19 @@ if user_name and user_birth:
         if st.sidebar.button("💾 기존 데이터 불러오기"):
             with open(file_path, "r", encoding="utf-8") as f:
                 saved_data = json.load(f)
+                # 세션 데이터 초기화 후 강제 주입
+                st.session_state.clear() 
                 st.session_state['scores_state'] = saved_data.get('scores', {})
-                # 불러오는 즉시 리포트 탭으로 강제 이동하기 위해 데이터 저장
                 st.session_state['final_results'] = saved_data.get('scores', {})
-                st.sidebar.info("로드 완료! '결과 보고서' 탭을 확인하세요.")
+                # 강제 재실행을 유도하여 데이터 반영
+                st.rerun()
 
 # 4. 메인 화면
 if user_name and user_birth:
     st.title(f"🔍 {user_name}님 정밀 심리 진단")
-    # 결과가 로드되어 있으면 '결과 보고서' 탭(index=1)을 기본으로 보여줌
-    tab_idx = 1 if 'final_results' in st.session_state else 0
+    
+    # 탭 구성
     tab1, tab2 = st.tabs(["📄 진단 응답", "📊 결과 보고서"])
-
-    if 'scores_state' not in st.session_state:
-        st.session_state['scores_state'] = {}
 
     with tab1:
         st.info("문항 답변 후 하단의 '결과 최종 전송' 버튼을 눌러주세요.")
@@ -95,7 +94,7 @@ if user_name and user_birth:
             if qs:
                 with st.expander(f"📌 {cat} 검사 섹션 ({len(qs)}문항)"):
                     cat_total = 0
-                    # 불러온 값이 있으면 그 값을 라디오 버튼 초기값으로 사용
+                    # 불러온 값이 세션에 있으면 반영
                     saved_val = st.session_state.get('scores_state', {}).get(cat, 0)
                     for i, q in enumerate(qs):
                         ans = st.radio(f"{i+1}. {q}", options=list(opts.keys()), 
@@ -117,6 +116,7 @@ if user_name and user_birth:
                 st.info("ℹ️ 시트 기록 지연 중입니다. 리포트는 즉시 확인 가능합니다.")
 
     with tab2:
+        # final_results가 세션에 있는 경우에만 리포트 출력
         if 'final_results' in st.session_state:
             res = st.session_state['final_results']
             for cat, score in res.items():
@@ -127,6 +127,6 @@ if user_name and user_birth:
                         st.subheader(info.get('title', '분석 결과'))
                         st.write(info.get('summary', ''))
         else:
-            st.warning("먼저 '진단 응답'을 완료하거나 기존 데이터를 불러와주세요.")
+            st.warning("먼저 '진단 응답'을 완료하거나 사이드바에서 기존 데이터를 불러와주세요.")
 else:
     st.warning("👈 왼쪽 사이드바에 검사 정보를 입력하세요.")

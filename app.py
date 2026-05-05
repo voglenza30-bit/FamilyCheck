@@ -5,31 +5,27 @@ import requests
 import pandas as pd
 import re
 
-# 1. 페이지 설정 및 상단 메뉴 숨기기
-st.set_page_config(page_title="가족 심리 진단 시스템 V2.4", layout="wide")
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            /* 사이드바 화살표 완전 제거 */
-            [data-testid="stSidebarNav"] {display: none;}
-            section[data-testid="stSidebar"] {display: none;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# 1. 페이지 설정 및 디자인
+st.set_page_config(page_title="가족 심리 진단 시스템 V2.5", layout="wide")
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stSidebarNav"] {display: none;}
+    section[data-testid="stSidebar"] {display: none;}
+    </style>
+    """, unsafe_allow_html=True)
 
-# [필수] 박준우님의 구글 웹 앱 URL을 따옴표 안에 넣어주세요
 GOOGLE_SCRIPT_URL = "여기에_복사한_웹앱_URL을_넣으세요"
 
-# 2. 데이터 로드 로직
+# 2. 데이터 로드 (캐시 적용으로 속도 향상)
 @st.cache_data
 def load_data():
     def read_txt(file):
         if os.path.exists(file):
             with open(file, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                return [re.sub(r'^\d+[\s\.]+', '', l.strip()) for l in lines if l.strip()]
+                return [re.sub(r'^\d+[\s\.]+', '', l.strip()) for l in f.readlines() if l.strip()]
         return []
     def read_json(file):
         if os.path.exists(file):
@@ -49,14 +45,14 @@ def load_data():
 
 db = load_data()
 
-# 3. 메인 화면: 피검자 정보 등록 (사이드바 대신 메인에 배치)
+# 3. 메인 화면: 정보 등록 및 불러오기
 st.title("🔍 정밀 심리 진단 시스템")
 
-# 세션 상태 초기화
 if 'user_registered' not in st.session_state:
     st.session_state['user_registered'] = False
+if 'temp_scores' not in st.session_state:
+    st.session_state['temp_scores'] = {}
 
-# 등록 정보 컨테이너
 if not st.session_state['user_registered']:
     with st.container():
         st.subheader("📋 피검자 정보 등록")
@@ -73,7 +69,7 @@ if not st.session_state['user_registered']:
         
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            if st.button("✅ 정보 확인 및 검사 시작", use_container_width=True):
+            if st.button("✅ 새 검사 시작", use_container_width=True):
                 if u_name and u_birth:
                     st.session_state['u_info'] = {"name": u_name, "birth": u_birth, "gender": u_gender, "rel": u_rel}
                     st.session_state['user_registered'] = True
@@ -82,81 +78,70 @@ if not st.session_state['user_registered']:
                     st.error("성함과 생년월일을 입력해주세요.")
         
         with btn_col2:
-            # 불러오기 기능
+            # [기능 강화] 기존 파일이 있으면 버튼 노출 및 데이터 복구
             if u_name and u_birth:
                 file_path = f"result_{u_name}_{u_birth}.json"
                 if os.path.exists(file_path):
-                    if st.button("💾 기존 기록 불러오기", use_container_width=True):
+                    if st.button("💾 중단된 기록 불러오기", use_container_width=True):
                         with open(file_path, "r", encoding="utf-8") as f:
                             saved_data = json.load(f)
+                            # 1. 기본 정보 복구
                             st.session_state['u_info'] = {"name": u_name, "birth": u_birth, "gender": u_gender, "rel": u_rel}
+                            # 2. 개별 문항 응답 데이터(raw_responses) 복구
+                            st.session_state['temp_scores'] = saved_data.get('raw_responses', {})
+                            # 3. 합산 점수 복구
                             st.session_state['scores_state'] = saved_data.get('scores', {})
-                            st.session_state['final_results'] = saved_data.get('scores', {})
                             st.session_state['user_registered'] = True
+                            st.success("데이터를 성공적으로 복구했습니다!")
                             st.rerun()
 
-# 4. 검사 진행 및 리포트 화면
+# 4. 검사 진행 화면
 else:
     u = st.session_state['u_info']
     st.success(f"피검자: {u['name']} ({u['birth']}) - {u['rel']}")
-    if st.button("🔄 정보 수정하기"):
-        st.session_state['user_registered'] = False
-        st.rerun()
-
+    
     tab1, tab2 = st.tabs(["📄 진단 응답", "📊 결과 보고서"])
     
     with tab1:
-        st.info("문항 답변 후 하단의 '결과 최종 전송' 버튼을 눌러주세요.")
+        st.info("이전에 답변한 내용은 자동으로 선택되어 있습니다. 마저 진행해주세요.")
         current_scores = {}
+        # 각 문항의 개별 응답을 저장할 딕셔너리
+        raw_responses = st.session_state.get('temp_scores', {})
+        
         opts = {0: "매우 아니다", 1: "아니다", 2: "보통이다", 3: "그렇다", 4: "매우 그렇다"}
         
         for cat, qs in db["questions"].items():
             if qs:
-                with st.expander(f"📌 {cat} 검사 섹션 ({len(qs)}문항)"):
+                with st.expander(f"📌 {cat} 섹션 ({len(qs)}문항)"):
                     cat_total = 0
-                    saved_val = st.session_state.get('scores_state', {}).get(cat, 0)
                     for i, q in enumerate(qs):
+                        # [핵심] 저장된 개별 응답이 있다면 불러오고, 없으면 기본값(0)
+                        key_name = f"{cat}_{i}"
+                        default_val = raw_responses.get(key_name, 0)
+                        
                         ans = st.radio(f"{i+1}. {q}", options=list(opts.keys()), 
-                                       format_func=lambda x: opts[x], horizontal=True, key=f"{cat}_{i}")
+                                       index=default_val, # 복구된 값을 인덱스로 설정
+                                       format_func=lambda x: opts[x], horizontal=True, key=key_name)
+                        
+                        # 실시간으로 응답 저장
+                        raw_responses[key_name] = ans
                         cat_total += ans
                     current_scores[cat] = cat_total
 
-        if st.button("🚀 검사 결과 최종 전송 (저장)", use_container_width=True):
-            payload = {"user": u, "scores": current_scores}
+        if st.button("🚀 검사 완료 및 최종 전송", use_container_width=True):
+            # 전송 시 개별 문항 응답(raw_responses)도 함께 저장하여 나중에 불러올 수 있게 함
+            payload = {
+                "user": u, 
+                "scores": current_scores, 
+                "raw_responses": raw_responses
+            }
             st.session_state['final_results'] = current_scores
             try:
                 requests.post(GOOGLE_SCRIPT_URL, data=json.dumps(payload), timeout=5)
                 st.success("✅ 저장이 완료되었습니다!")
-                st.balloons()
+                # 중간 기록 파일 업데이트 (서버 파일 시스템에 저장)
+                file_name = f"result_{u['name']}_{u['birth']}.json"
+                with open(file_name, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, ensure_ascii=False, indent=4)
             except:
-                st.info("ℹ️ 결과 보고서가 생성되었습니다.")
-
-    with tab2:
-        if 'final_results' in st.session_state:
-            res = st.session_state['final_results']
-            def analyze(cat, score, t_q):
-                db_r = db["results_db"]
-                m_s = t_q * 4
-                if cat == "IQ":
-                    f = int((score / m_s) * 60 + 80)
-                    k = "superior" if f >= 120 else ("high_average" if f >= 110 else "average")
-                    return f"추정 FSIQ: {f}", db_r["IQ"].get(k, {})
-                elif cat == "TCI":
-                    t = int(((score - (t_q * 2)) / t_q) * 10 + 50)
-                    k = "high" if t >= 65 else ("low" if t <= 40 else "moderate")
-                    return f"T-Score: {t}", db_r["TCI"].get(k, {})
-                elif cat in ["MMPI", "CLINICAL"]:
-                    r = score / m_s
-                    k = "elevated" if r >= 0.7 else ("borderline" if r >= 0.4 else "normal")
-                    return f"위험 지수: {int(r*100)}/100", db_r["CLINICAL"].get(k, {})
-                return "", {}
-
-            for cat, score in res.items():
-                t_q = len(db["questions"][cat])
-                metric, info = analyze(cat, score, t_q)
-                with st.expander(f"▶ {cat} 지표 ({metric})", expanded=True):
-                    if info:
-                        st.subheader(info.get('title', ''))
-                        st.write(info.get('summary', ''))
-        else:
-            st.warning("진단 응답을 완료해주세요.")
+                st.info("보고서가 생성되었습니다.")

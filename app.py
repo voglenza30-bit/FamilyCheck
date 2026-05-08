@@ -5,7 +5,7 @@ import json, os, requests, re
 st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
-# [필수 확인] 배포하신 구글 웹 앱 URL을 넣으세요
+# 🚨 [매우 중요] 아래 따옴표 안에 본인의 구글 웹 앱 주소(https://script...)를 꼭 넣으세요!
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWqiJN-vIdai_MeUwtbA2GuPe3yPyvot7oDQ_oX8EK_z5pcSf3edvJwCNZheUuhiP2ww/exec"
 
 @st.cache_data
@@ -22,7 +22,7 @@ def load_data():
 data_db = load_data()
 
 # ==========================================
-# [신규 탑재] 전문가 수준 심층 분석 데이터베이스
+# [전문가 심층 분석 데이터베이스]
 # ==========================================
 EXPERT_DB = {
     "MBTI": {
@@ -54,7 +54,6 @@ def get_detailed_report(cat, score_data, t_q):
         
     m_s = t_q * 4 if t_q > 0 else 1
     ratio = total / m_s
-    
     metric = ""; title = ""; details = ""; likes = ""; dislikes = ""
     
     if cat == "IQ":
@@ -85,7 +84,7 @@ def get_detailed_report(cat, score_data, t_q):
             res_type += "S" if dims[1] < mid else "N"
             res_type += "T" if dims[2] < mid else "F"
             res_type += "J" if dims[3] < mid else "P"
-        else: res_type = "ESTJ" # 데이터 부재 시 기본값
+        else: res_type = "ESTJ"
         
         metric = f"성격 유형 지표: {res_type}"
         info = EXPERT_DB["MBTI"].get(res_type, {})
@@ -112,7 +111,6 @@ def get_detailed_report(cat, score_data, t_q):
             likes = "안전하고 검증된 방법, 개인적인 공간 보장, 익숙한 루틴"
             dislikes = "불확실성, 낯선 환경에서의 즉흥적인 대응, 타인의 지나친 간섭"
 
-    # [수정] MMPI (성격 병리/대인관계)와 CLINICAL (임상/정서증상)의 완벽 분리
     elif cat == "MMPI":
         val = int((total/m_s)*100); metric = f"성격/적응 지수: {val}/100"
         if val >= 70:
@@ -161,27 +159,46 @@ if not st.session_state['reg']:
     gen = st.selectbox("성별", ["남성", "여성"])
     rel = st.selectbox("관계", ["본인", "부", "모", "자녀", "배우자", "기타"])
     
-    if st.button("✅ 확인 및 기록 불러오기", use_container_width=True):
-        if name and birth:
-            with st.spinner("전문 데이터 조회 중..."):
-                try:
-                    res = requests.get(f"{GOOGLE_SCRIPT_URL}?name={name}&birth={birth}", timeout=10).json()
-                    st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
-                    st.session_state['reg'] = True
-                    if res.get("status") == "success":
-                        st.session_state['final_results'] = res["scores"]
-                        st.session_state['is_old_user'] = True
-                    else: st.session_state['is_old_user'] = False
-                    st.rerun()
-                except:
-                    st.warning("서버 연결 지연. 신규 검사 모드로 진입합니다.")
-                    st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
-                    st.session_state['reg'] = True; st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✅ 확인 및 기록 불러오기", use_container_width=True):
+            if name and birth:
+                with st.spinner("서버에서 대상자 기록을 조회 중입니다..."):
+                    try:
+                        # [핵심 수정] 한글 인코딩 문제를 완벽 차단하는 params 방식 사용
+                        res = requests.get(GOOGLE_SCRIPT_URL, params={"name": name, "birth": birth}, timeout=10).json()
+                        st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
+                        st.session_state['reg'] = True
+                        if res.get("status") == "success":
+                            st.session_state['final_results'] = res["scores"]
+                            st.session_state['is_old_user'] = True
+                            st.rerun()
+                        else:
+                            st.session_state['is_old_user'] = False
+                            st.rerun()
+                    except Exception as e:
+                        # [핵심 수정] 에러가 나면 왜 났는지 빨간 창으로 보여줌
+                        st.error(f"⚠️ 연결 오류 발생: {str(e)}")
+                        st.warning("👉 11번째 줄의 GOOGLE_SCRIPT_URL에 본인의 구글 웹앱 주소를 정확히 넣으셨는지 확인해주세요!")
+                        st.info("만약 주소가 '여기에_실제_주소를_넣으세요'로 되어있다면 코드를 다시 수정해야 합니다.")
+            else:
+                st.error("이름과 생년월일을 모두 입력해주세요.")
+    with col2:
+        if st.button("🚀 신규 검사 바로 시작 (불러오기 생략)", use_container_width=True):
+            if name and birth:
+                st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
+                st.session_state['is_old_user'] = False
+                st.session_state['reg'] = True
+                st.rerun()
+            else:
+                st.error("이름과 생년월일을 모두 입력해주세요.")
+                
 else:
     st.title("📊 임상 심리 분석 보고서")
     st.info(f"👤 대상자: {st.session_state['u']['name']}님 ({st.session_state['u']['birth']})")
     if st.button("🔄 대상자 변경"): st.session_state.clear(); st.rerun()
         
+    d_tab = 1 if st.session_state.get('is_old_user') else 0
     t1, t2 = st.tabs(["📄 온라인 진단지", "📑 종합 소견서"])
     
     with t1:
@@ -229,6 +246,6 @@ else:
                     st.write("")
                     st.write("")
             st.divider()
-            st.caption("※ 본 분석 보고서는 응답된 데이터를 바탕으로 산출된 전문가 수준의 심층 알고리즘 결과입니다. 의학적 진단을 대체하지 않습니다.")
+            st.caption("※ 본 분석 보고서는 응답된 데이터를 바탕으로 산출된 전문가 수준의 심층 알고리즘 결과입니다.")
         else:
             st.warning("분석할 데이터가 없습니다. [온라인 진단지] 탭에서 먼저 검사를 진행해 주십시오.")

@@ -5,7 +5,7 @@ import json, os, requests, re
 st.set_page_config(page_title="심리 진단 시스템", layout="wide")
 st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
-# [필수] 구글 웹 앱 URL을 다시 한번 확인해주세요!
+# [여기가 문제!] 주소 끝에 꼭 따옴표(")가 닫혔는지 확인하세요.
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvYpP9t4OFqTJRhHWZL2-YhFkw9QjoIBUrLdevUH42uqKicdakSw7DfqzgBZjYNpS1pQ/exec"
 
 @st.cache_data
@@ -55,20 +55,17 @@ if not st.session_state['reg']:
         if name and birth:
             with st.spinner("데이터 조회 중..."):
                 try:
-                    # 데이터 조회 시도
                     res = requests.get(f"{GOOGLE_SCRIPT_URL}?name={name}&birth={birth}", timeout=10).json()
                     st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
                     st.session_state['reg'] = True
-                    
                     if res.get("status") == "success":
                         st.session_state['final_results'] = res["scores"]
-                        st.session_state['is_old_user'] = True # 기존 유저 표시
+                        st.session_state['is_old_user'] = True
                     else:
-                        st.session_state['is_old_user'] = False # 신규 유저
+                        st.session_state['is_old_user'] = False
                     st.rerun()
                 except:
-                    # 에러 시 빨간 창 대신 조용한 안내 메시지만 표시
-                    st.warning("현재 서버 연결이 원활하지 않습니다. 신규 검사로 진행합니다.")
+                    st.warning("데이터 조회 중 오류가 발생했습니다. 신규 검사로 진행합니다.")
                     st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
                     st.session_state['reg'] = True
                     st.rerun()
@@ -79,7 +76,6 @@ else:
     if st.button("🔄 처음으로 돌아가기"):
         st.session_state.clear(); st.rerun()
         
-    # 기존 유저면 결과 탭을 먼저, 신규 유저면 응답 탭을 먼저 보여줌
     d_tab = 1 if st.session_state.get('is_old_user') else 0
     t1, t2 = st.tabs(["📄 진단 응답", "📊 결과 보고서"])
     

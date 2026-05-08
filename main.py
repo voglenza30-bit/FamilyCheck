@@ -1,96 +1,97 @@
 import streamlit as st
-import json
-import os
-import requests
-import pandas as pd
-import re
+import json, os, requests, re
 
-# 1. 페이지 설정 및 상단 메뉴 숨기기
-st.set_page_config(page_title="가족 심리 진단 시스템 V2.6", layout="wide")
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            [data-testid="stSidebarNav"] {display: none;}
-            section[data-testid="stSidebar"] {display: none;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# 1. 환경 설정
+st.set_page_config(page_title="심리 진단 시스템", layout="wide")
+st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
-# [필수] 박준우님의 구글 웹 앱 URL (배포된 URL)
+# [수정] 1단계에서 새로 배포한 주소를 여기에 넣으세요!
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxICsSW3rWOu2rwMbFLuKSwrMdp88X40tx1mAJCx-j5akiaL5KbTWzDgzsLnhw1ljtM-Q/exec"
 
-# 2. 데이터 로드 로직
 @st.cache_data
 def load_data():
-    def read_txt(file):
-        if os.path.exists(file):
-            with open(file, "r", encoding="utf-8") as f:
-                return [re.sub(r'^\d+[\s\.]+', '', l.strip()) for l in f.readlines() if l.strip()]
+    def read_t(f):
+        if os.path.exists(f):
+            with open(f, "r", encoding="utf-8") as file:
+                return [re.sub(r'^\d+[\s\.]+', '', l.strip()) for l in file.readlines() if l.strip()]
         return []
-    def read_json(file):
-        if os.path.exists(file):
-            with open(file, "r", encoding="utf-8") as f: return json.load(f)
+    def read_j(f):
+        if os.path.exists(f):
+            with open(f, "r", encoding="utf-8") as file: return json.load(file)
         return {}
     return {
-        "questions": {
-            "IQ": read_txt("wechsler.txt"), "MBTI": read_txt("mbti.txt"),
-            "TCI": read_txt("tci.txt"), "MMPI": read_txt("mmpi.txt"),
-            "CLINICAL": read_txt("clinical.txt")
-        },
-        "results_db": {
-            "IQ": read_json("result_iq.json"), "MBTI": read_json("result_mbti.json"),
-            "TCI": read_json("result_tci.json"), "CLINICAL": read_json("result_clinical.json")
-        }
+        "qs": {"IQ": read_t("wechsler.txt"), "MBTI": read_t("mbti.txt"), "TCI": read_t("tci.txt"), "MMPI": read_t("mmpi.txt"), "CLINICAL": read_t("clinical.txt")},
+        "db": {"IQ": read_j("result_iq.json"), "MBTI": read_j("result_mbti.json"), "TCI": read_j("result_tci.json"), "CLINICAL": read_j("result_clinical.json")}
     }
 
-db = load_data()
+data_db = load_data()
 
-# 3. 구글 시트에서 데이터 가져오는 함수
-def fetch_from_sheet(name, birth):
-    try:
-        # 구글 앱스 스크립트에 GET 요청을 보내 데이터를 가져옵니다.
-        # (구글 앱스 스크립트 쪽에 doGet 함수 설정이 필요합니다)
-        response = requests.get(f"{GOOGLE_SCRIPT_URL}?name={name}&birth={birth}", timeout=10)
-        if response.status_code == 200:
-            return response.json() # 점수 데이터 반환
-    except:
-        return None
-    return None
+# 분석 엔진
+def get_report(cat, score, t_q):
+    db = data_db["db"]
+    m_s = t_q * 4
+    if cat == "IQ":
+        val = int((score/m_s)*60+80); k = "superior" if val>=120 else ("high_average" if val>=110 else "average")
+        return f"추정 FSIQ: {val}", db["IQ"].get(k, {})
+    elif cat == "TCI":
+        val = int(((score-(t_q*2))/t_q)*10+50); k = "high" if val>=65 else ("low" if val<=40 else "moderate")
+        return f"T-Score: {val}", db["TCI"].get(k, {})
+    elif cat in ["MMPI", "CLINICAL"]:
+        val = int((score/m_s)*100); k = "elevated" if val>=70 else ("borderline" if val>=40 else "normal")
+        return f"위험지수: {val}/100", db["CLINICAL"].get(k, {})
+    return "", {}
 
-# 4. 메인 화면: 등록 및 자동 불러오기
-st.title("🔍 정밀 심리 진단 시스템")
+# 메인 로직
+if 'reg' not in st.session_state: st.session_state['reg'] = False
 
-if 'user_registered' not in st.session_state:
-    st.session_state['user_registered'] = False
-
-if not st.session_state['user_registered']:
-    with st.container():
-        st.subheader("📋 피검자 정보 등록")
-        u_name = st.text_input("성함(이름)", placeholder="성함을 입력하세요")
-        u_birth = st.text_input("생년월일(8자리)", placeholder="예: 19800101")
-        col1, col2 = st.columns(2)
-        with col1: u_gender = st.selectbox("성별", ["남성", "여성"])
-        with col2: u_rel = st.selectbox("관계", ["본인", "부", "모", "자녀", "남편", "아내", "기타"])
-        
-        if st.button("🚀 정보 확인 및 기존 기록 불러오기", use_container_width=True):
-            if u_name and u_birth:
-                with st.spinner('기존 기록을 조회 중입니다...'):
-                    # 구글 시트에서 데이터 조회 시도
-                    sheet_data = fetch_from_sheet(u_name, u_birth)
-                    
-                    st.session_state['u_info'] = {"name": u_name, "birth": u_birth, "gender": u_gender, "rel": u_rel}
-                    st.session_state['user_registered'] = True
-                    
-                    if sheet_data and 'scores' in sheet_data:
-                        st.session_state['final_results'] = sheet_data['scores']
-                        st.success(f"✅ {u_name}님의 이전 검사 결과를 불러왔습니다!")
-                    else:
-                        st.info("새로운 검사를 시작합니다.")
+if not st.session_state['reg']:
+    st.title("🔍 심리 진단 등록")
+    name = st.text_input("성함")
+    birth = st.text_input("생년월일(8자리)")
+    gen = st.selectbox("성별", ["남성", "여성"])
+    rel = st.selectbox("관계", ["본인", "부", "모", "자녀", "배우자", "기타"])
+    
+    if st.button("✅ 확인 및 데이터 불러오기", use_container_width=True):
+        if name and birth:
+            with st.spinner("조회 중..."):
+                try:
+                    res = requests.get(f"{GOOGLE_SCRIPT_URL}?name={name}&birth={birth}", timeout=10).json()
+                    if res.get("status") == "success":
+                        st.session_state['final_results'] = res["scores"]
+                        st.success("기록을 찾았습니다!")
+                    else: st.info("새 검사를 시작합니다.")
+                    st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
+                    st.session_state['reg'] = True
                     st.rerun()
-            else:
-                st.error("이름과 생년월일을 입력해주세요.")
+                except: st.error("연결 실패. URL을 확인하세요.")
+else:
+    st.subheader(f"피검자: {st.session_state['u']['name']}")
+    if st.button("🔄 정보 수정"): 
+        st.session_state.clear(); st.rerun()
+        
+    t1, t2 = st.tabs(["📄 응답", "📊 결과"])
+    
+    with t1:
+        cur_s = {}
+        opts = {0:"매우 아니다", 1:"아니다", 2:"보통", 3:"그렇다", 4:"매우 그렇다"}
+        for c, qs in data_db["qs"].items():
+            if qs:
+                with st.expander(f"📌 {c} 섹션"):
+                    total = 0
+                    for i, q in enumerate(qs):
+                        ans = st.radio(f"{i+1}. {q}", options=list(opts.keys()), format_func=lambda x:opts[x], horizontal=True, key=f"{c}_{i}", index=2)
+                        total += ans
+                    cur_s[c] = total
+        if st.button("🚀 최종 전송 및 저장"):
+            requests.post(GOOGLE_SCRIPT_URL, data=json.dumps({"user":st.session_state['u'], "scores":cur_s}))
+            st.session_state['final_results'] = cur_s; st.success("저장 완료!"); st.rerun()
 
-# 5. 검사 및 리포트 화면 (이하 로직 동일)
-# ... [생략: 이전 버전의 검사 및 리포트 탭 로직] ...
+    with t2:
+        if 'final_results' in st.session_state:
+            for c, s in st.session_state['final_results'].items():
+                t_q = len(data_db["qs"].get(c, []))
+                met, info = get_report(c, s, t_q)
+                with st.expander(f"▶ {c} ({met})", expanded=True):
+                    st.subheader(info.get('title', ''))
+                    st.write(info.get('summary', ''))
+        else: st.warning("응답을 먼저 완료하세요.")

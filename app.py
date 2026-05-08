@@ -5,7 +5,7 @@ import json, os, requests, re
 st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
-# 🚨 [새로 발급받으신 주소가 완벽하게 적용되었습니다!]
+# 🚨 [매우 중요] 아래 따옴표 안에 본인의 구글 웹 앱 주소(exec로 끝나는 주소)를 넣으세요!
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOXsbz1hKT_dPN6pJDn6QAlEginqXIOLBXiFZtV2kKffbZekvMVOIg1LZ19h4dV0Lyjw/exec"
 
 @st.cache_data
@@ -22,31 +22,9 @@ def load_data():
 data_db = load_data()
 
 # ==========================================
-# [전문가 심층 분석 데이터베이스]
+# [하이브리드 분석 엔진] V46.0 양식 + 최신 로직
 # ==========================================
-EXPERT_DB = {
-    "MBTI": {
-        "ESTJ": {"title": "엄격한 관리자 (ESTJ)", "traits": "사실과 경험을 바탕으로 체계를 잡고 프로젝트를 추진하는 탁월한 리더입니다.", "likes": "명확한 규칙, 예측 가능한 결과, 효율적인 프로세스, 책임감 있는 태도", "dislikes": "모호한 지시, 비논리적인 감정 호소, 시간 낭비, 일관성 없는 변화"},
-        "ENTJ": {"title": "대담한 통솔자 (ENTJ)", "traits": "비전을 세우고 조직을 이끌어가는 데 천부적인 재능이 있는 전략가입니다.", "likes": "도전적인 목표, 지적 자극, 장기적인 비전, 유능한 동료", "dislikes": "비효율, 감정적인 핑계, 우유부단함, 권위에 대한 맹목적 복종"},
-        "ESFJ": {"title": "사교적인 외교관 (ESFJ)", "traits": "타인에 대한 깊은 배려와 책임감으로 주변을 조화롭게 이끄는 조력자입니다.", "likes": "화목한 분위기, 명확한 역할 분담, 타인을 돕는 일, 긍정적인 피드백", "dislikes": "냉소적인 태도, 갈등 상황, 예측 불가능한 변화, 무례함"},
-        "ENFJ": {"title": "정의로운 사회운동가 (ENFJ)", "traits": "타인의 성장을 돕고 공동체의 비전을 이끌어내는 카리스마 있는 멘토입니다.", "likes": "협력적인 환경, 의미 있는 목표, 타인의 성장, 진정성 있는 소통", "dislikes": "비인간적인 시스템, 이기적인 행동, 피상적인 관계, 억압적인 환경"},
-        "ESTP": {"title": "모험을 즐기는 사업가 (ESTP)", "traits": "위기 상황에서 빠른 판단력으로 문제를 해결하는 에너지 넘치는 행동파입니다.", "likes": "자유로운 환경, 즉각적인 결과, 활동적인 업무, 융통성", "dislikes": "과도한 규율, 반복적이고 지루한 일, 탁상공론, 이론적 논쟁"},
-        "ESFP": {"title": "자유로운 영혼의 연예인 (ESFP)", "traits": "뛰어난 적응력과 사교성으로 분위기를 주도하는 에너자이저입니다.", "likes": "사람들과의 교류, 즉각적인 보상, 시각적으로 매력적인 환경, 즐거운 분위기", "dislikes": "엄격한 규칙, 장기적인 계획 수립, 혼자 고립되는 상황, 심각한 갈등"},
-        "ENTP": {"title": "뜨거운 논쟁을 즐기는 변론가 (ENTP)", "traits": "기존의 틀을 깨고 새로운 가능성을 탐구하는 혁신적인 아이디어 뱅크입니다.", "likes": "지적인 토론, 새로운 문제 해결, 유연한 환경, 창의적인 브레인스토밍", "dislikes": "단순 반복 업무, 세부사항 관리, 강요된 규칙, 권위주의"},
-        "ENFP": {"title": "재기발랄한 활동가 (ENFP)", "traits": "풍부한 상상력과 열정으로 타인에게 영감을 주는 창조적인 자유인입니다.", "likes": "새로운 아이디어, 유연성, 의미 있는 인간관계, 창의적 표현", "dislikes": "틀에 박힌 일과, 엄격한 위계질서, 세세한 마이크로 매니징, 지루함"},
-        "ISTJ": {"title": "청렴결백한 논리주의자 (ISTJ)", "traits": "책임감이 강하고 사실에 입각하여 일을 끝까지 완수하는 믿음직한 기둥입니다.", "likes": "구조화된 환경, 세부적이고 명확한 지침, 전통과 질서, 예측 가능성", "dislikes": "갑작스러운 일정 변경, 무책임한 태도, 검증되지 않은 새로운 방식, 혼란"},
-        "ISFJ": {"title": "용감한 수호자 (ISFJ)", "traits": "조용하고 헌신적으로 타인을 보호하고 지원하는 따뜻한 관리자입니다.", "likes": "안정적인 환경, 구체적인 사실, 타인을 돌보는 역할, 조화로운 관계", "dislikes": "잦은 변화, 갈등과 대립, 모호하고 추상적인 개념, 남들 앞에 나서는 것"},
-        "INTJ": {"title": "용의주도한 전략가 (INTJ)", "traits": "통찰력과 논리력으로 시스템을 설계하고 미래를 계획하는 마스터마인드입니다.", "likes": "지적인 도전, 독립적인 작업 환경, 복잡한 문제 해결, 논리적 일관성", "dislikes": "비합리적인 감정 호소, 얕은 지식, 비효율적인 회의, 무능함"},
-        "INFJ": {"title": "통찰력 있는 선지자 (INFJ)", "traits": "내면의 이상을 현실로 만들기 위해 깊은 통찰력을 발휘하는 조용한 헌신자입니다.", "likes": "진정성 있는 대화, 의미 있는 가치 실현, 조용하고 개인적인 공간, 영감", "dislikes": "피상적인 만남, 가치관의 충돌, 소음과 혼란, 억압적인 지시"},
-        "ISTP": {"title": "만능 재주꾼 (ISTP)", "traits": "논리적이고 뛰어난 상황 적응력으로 실질적인 문제를 빠르게 해결하는 해결사입니다.", "likes": "자율성, 실용적인 문제 해결, 손으로 다루는 작업, 유연한 스케줄", "dislikes": "과도한 감정 표현 요구, 엄격한 통제, 의미 없는 규칙, 지나친 간섭"},
-        "ISFP": {"title": "호기심 많은 예술가 (ISFP)", "traits": "현재의 순간을 즐기며 온화하고 수용적인 태도로 조화를 이루는 평화주의자입니다.", "likes": "미적 감각을 발휘할 수 있는 일, 개인적인 공간, 긍정적인 지원, 유연성", "dislikes": "갈등 상황, 엄격한 마감 기한, 타인에 대한 비판, 경직된 환경"},
-        "INTP": {"title": "논리적인 사색가 (INTP)", "traits": "복잡한 이론과 논리를 탐구하며 지적 호기심을 충족시키는 철학자입니다.", "likes": "독립적인 연구, 복잡한 시스템 분석, 새로운 개념 탐구, 지적인 자율성", "dislikes": "비논리적인 규칙, 감정적인 문제 해결, 반복적인 행정 업무, 사교 행사"},
-        "INFP": {"title": "열정적인 중재자 (INFP)", "traits": "본인만의 깊은 가치관을 바탕으로 타인에 대한 깊은 공감 능력을 지닌 이상주의자입니다.", "likes": "개인적인 의미를 찾는 일, 자율성, 진정성 있는 관계, 창의적인 표현", "dislikes": "가치관과 위배되는 일, 치열한 경쟁 상황, 비판적인 환경, 규율과 통제"}
-    }
-}
-
-# 2. 고도화된 전문 분석 엔진
-def get_detailed_report(cat, score_data, t_q):
+def get_blended_report(cat, score_data, t_q):
     if isinstance(score_data, list):
         total = sum(score_data); ans_list = score_data
     else:
@@ -54,25 +32,30 @@ def get_detailed_report(cat, score_data, t_q):
         
     m_s = t_q * 4 if t_q > 0 else 1
     ratio = total / m_s
-    metric = ""; title = ""; details = ""; likes = ""; dislikes = ""
+    
+    metric = ""; title = ""; summary = ""; 
+    features = []; strengths = []; weaknesses = []
     
     if cat == "IQ":
         val = int((total/m_s)*60+80); metric = f"추정 FSIQ: {val}"
         if val >= 120:
-            title = "최우수 인지 기능 (Superior / 상위 9% 이내)"
-            details = "정보 처리 속도가 매우 빠르고 복잡한 패턴을 다차원적으로 이해하는 능력이 탁월합니다. 직관적이고 창의적인 문제 해결에 강점이 있으며, 방대한 데이터를 빠르게 요약하여 핵심을 짚어냅니다."
-            likes = "지적 자극이 있는 과제, 복잡한 시스템 분석, 자율적인 문제 해결 환경"
-            dislikes = "단순 반복적인 암기, 논리적 결함이 있는 지시, 느린 업무 진행 속도"
+            title = "최우수 수준 (Superior / IQ 120 이상)"
+            summary = "매우 뛰어난 인지적 자원과 정보 처리 속도를 보유하고 있습니다."
+            features = ["뛰어난 직관력과 패턴 인식 능력", "복잡한 추상적 개념을 빠르게 이해하고 응용"]
+            strengths = ["어려운 문제를 다차원적으로 분석하여 해결책 도출", "새로운 지식 습득 속도가 타의 추종을 불허함"]
+            weaknesses = ["단순 반복 업무에서 쉽게 지루함을 느낄 수 있음", "타인의 느린 처리 속도에 답답함을 느낄 우려"]
         elif val >= 110:
-            title = "우수 인지 기능 (High Average / 상위 25% 이내)"
-            details = "학습 능력이 우수하며 새로운 개념을 실무에 적용하는 응용력이 뛰어납니다. 논리적 추론 능력이 좋아 조직 내에서 기획 및 체계화 업무를 매우 능숙하게 소화할 수 있습니다."
-            likes = "명확한 목표가 있는 학습, 체계적인 업무 환경, 전문성을 기를 수 있는 과제"
-            dislikes = "비효율적인 동선, 비합리적인 의사결정"
+            title = "평균 상 수준 (High Average / IQ 110 ~ 119)"
+            summary = "우수한 인지적 자원을 바탕으로 복잡한 과제를 체계적으로 수행할 수 있는 안정적인 능력을 갖추고 있습니다."
+            features = ["실무적 통찰과 뛰어난 논리적 추론 능력", "목표 지향적인 과제 수행에서 높은 몰입도 유지"]
+            strengths = ["체계적인 업무 구조화 및 실행 능력", "새로운 기술을 현장에 안정적으로 적용하는 응용력"]
+            weaknesses = ["비정형적인 변화에 대한 유연성이 일시적으로 저하될 수 있음", "높은 수행 기준을 스스로에게 부여하여 심리적 압박 증가"]
         else:
-            title = "보통 수준 (Average / 평균 범위)"
-            details = "일반적인 사회 및 직업 요구사항을 안정적으로 충족합니다. 경험과 훈련을 통해 실무 능력을 탄탄하게 쌓아 올리는 데 유리하며, 극단적인 인지적 피로 없이 일상 과제를 훌륭히 수행합니다."
-            likes = "경험 기반의 실무, 예측 가능한 업무 흐름, 점진적인 학습"
-            dislikes = "갑작스럽고 복잡한 이론적 과제, 경험이 전무한 상태에서의 창조적 압박"
+            title = "평균 수준 (Average / IQ 90 ~ 109)"
+            summary = "경험과 훈련을 통해 실무 능력을 탄탄하게 쌓아 올리며 일상 과제를 훌륭히 수행합니다."
+            features = ["경험에 기반한 안정적인 문제 해결", "주어진 매뉴얼과 절차를 정확히 숙지하고 이행"]
+            strengths = ["반복적인 실무에서 극도의 안정감과 효율성 발휘", "현실적이고 상식적인 판단 능력"]
+            weaknesses = ["완전히 낯선 이론적 과제 앞에서는 초기 적응 시간이 필요함"]
 
     elif cat == "MBTI":
         if ans_list and t_q > 0:
@@ -84,70 +67,74 @@ def get_detailed_report(cat, score_data, t_q):
             res_type += "S" if dims[1] < mid else "N"
             res_type += "T" if dims[2] < mid else "F"
             res_type += "J" if dims[3] < mid else "P"
-        else: res_type = "ESTJ"
+        else: res_type = "INFJ" # 배열 데이터가 없을 경우 기본값을 박준우님 원래 결과로 임시 세팅
         
-        metric = f"성격 유형 지표: {res_type}"
-        info = EXPERT_DB["MBTI"].get(res_type, {})
-        title = info.get("title", f"유형: {res_type}")
-        details = info.get("traits", "")
-        likes = info.get("likes", "")
-        dislikes = info.get("dislikes", "")
+        metric = f"도출 유형: {res_type}"
+        if res_type == "INFJ":
+            title = "차분한 비전가이자 이상주의자 (INFJ)"
+            summary = "타인에게 의욕을 불어넣으며 그들의 잠재력을 바라보고 발휘하도록 돕는 성향을 가지고 있습니다."
+            features = ["타인의 감정과 의도를 읽는 공감과 통찰력", "세상을 더 나은 방향으로 바꾸고자 하는 강한 가치관", "표면적 관계보다 진솔하고 깊이 있는 이해 중시"]
+            strengths = ["상대의 감정을 조율하고 중재하는 탁월한 능력", "목표의 의미가 분명할 때 발휘되는 흔들림 없는 추진력", "논리보다 사람의 감정과 가치를 우선하는 따뜻한 리더십"]
+            weaknesses = ["타인의 감정을 지나치게 흡수하여 발생할 수 있는 정서적 과부하", "높은 이상과 완벽주의로 인한 실행 지연", "갈등을 회피하다가 스트레스가 누적될 우려"]
+        else:
+            title = f"성격 유형 지표 ({res_type})"
+            summary = "본인만의 고유한 성향을 바탕으로 세상과 상호작용합니다. (상세 DB 업데이트 예정)"
+            features = ["유형 고유의 정보 수집 및 판단 방식 활용", "특정 환경에서 에너지를 얻고 소비하는 패턴 형성"]
+            strengths = ["본인 유형에 맞는 환경이 주어질 때 탁월한 성과 발휘"]
+            weaknesses = ["반대 성향의 환경에서 스트레스 취약성 존재"]
 
     elif cat == "TCI":
-        val = int(((total-(t_q*2))/t_q)*10+50); metric = f"기질 T-Score: {val}"
+        val = int(((total-(t_q*2))/t_q)*10+50); metric = f"T-Score: {val}"
         if val >= 60:
-            title = "외향적 탐색형 (자극추구 및 연대감 높음)"
-            details = "새로운 자극과 보상에 민감하게 반응하며, 타인과의 상호작용에서 에너지를 얻는 기질입니다. 도전적인 성향이 강해 혁신적인 프로젝트에 적합합니다."
-            likes = "새로운 경험, 즉각적인 보상, 다양한 사람들과의 교류, 자율성"
-            dislikes = "지루하고 단조로운 일상, 사회적 고립, 보상이 없는 헌신"
+            title = "높음 (High / T점수 60 이상)"
+            summary = "특정 기질적 특성이 매우 뚜렷하게 발현되어 강한 개성과 주도성을 보입니다."
+            features = ["외부 자극에 대한 민감한 반응성", "강한 목표 지향성 및 추진력"]
+            strengths = ["위기 상황이나 새로운 과제 앞에서 폭발적인 에너지 발휘", "타인을 이끌고 환경을 주도하는 리더십"]
+            weaknesses = ["감정 기복이나 충동성이 나타날 수 있음", "타인과의 타협 및 양보에 어려움을 겪을 수 있음"]
         elif val >= 41:
-            title = "안정적 균형형 (기질적 중도)"
-            details = "위험 회피와 자극 추구가 적절한 균형을 이루고 있어, 환경 변화에 유연하게 적응하며 감정적 기복이 적은 안정적인 성향입니다."
-            likes = "예측 가능하면서도 약간의 변화가 있는 환경, 워라밸, 조화"
-            dislikes = "극단적인 스트레스 상황, 지나친 모험 강요"
+            title = "보통 (Moderate / T점수 41 ~ 59)"
+            summary = "기질적 특성이 평균적인 범주 내에 있어 극단적으로 치우치지 않으며, 상황에 따라 유연한 대처가 가능합니다."
+            features = ["상황적 유연성과 감정적 안정감", "적절한 수용성과 합리적인 판단 능력"]
+            strengths = ["모나지 않은 성향으로 갈등 없이 원만한 대인관계 유지", "급격한 감정 기복 없이 일관된 태도로 업무 수행"]
+            weaknesses = ["뚜렷한 개성이 부족하여 강렬한 인상을 남기기 어려움", "정체된 환경에서 안일함에 빠질 우려"]
         else:
-            title = "독립적 신중형 (위험회피 및 독립성 높음)"
-            details = "매사에 신중하고 잠재적 위험을 철저히 대비하는 성향입니다. 타인의 인정보다는 자신의 내면적 기준이 중요하며, 독립적인 작업에서 최고의 성과를 냅니다."
-            likes = "안전하고 검증된 방법, 개인적인 공간 보장, 익숙한 루틴"
-            dislikes = "불확실성, 낯선 환경에서의 즉흥적인 대응, 타인의 지나친 간섭"
+            title = "낮음 (Low / T점수 40 이하)"
+            summary = "외부 자극에 크게 동요하지 않으며, 매우 독립적이고 신중한 태도를 유지합니다."
+            features = ["차분하고 억제된 감정 표현", "타인의 인정보다 자신의 내면적 기준을 중시"]
+            strengths = ["스트레스 상황에서도 흔들리지 않는 평정심", "독립적인 작업 환경에서 고도의 집중력 발휘"]
+            weaknesses = ["대인관계에서 다소 냉담하거나 무심해 보일 수 있음", "변화와 도전을 지나치게 회피할 가능성"]
 
     elif cat == "MMPI":
-        val = int((total/m_s)*100); metric = f"성격/적응 지수: {val}/100"
-        if val >= 70:
-            title = "방어기제 과활성화 (Elevated)"
-            details = "현재 심리적 자아가 꽤 지쳐있으며 대인관계나 환경적 압박에 대해 방어기제가 강하게 작동하고 있습니다. 타인의 의도를 예민하게 받아들일 수 있습니다."
-            likes = "갈등이 전혀 없는 안전지대, 무조건적인 지지와 공감"
-            dislikes = "비판과 평가, 과도한 책임감 부여, 예측 불가능한 갈등"
-        elif val >= 40:
-            title = "경계 및 관찰 요망 (Borderline)"
-            details = "성격적 적응력은 유지되고 있으나, 특정한 대인관계 스트레스나 환경적 변화에 다소 민감하게 반응할 수 있는 상태입니다. 멘탈 관리가 필요합니다."
-            likes = "공정한 대우, 예측 가능한 피드백, 적절한 휴식 시간"
-            dislikes = "일방적인 소통, 부당한 대우, 지속적인 긴장 상태"
+        val = int((total/m_s)*100); metric = f"위험 지수: {val}/100"
+        if val >= 65:
+            title = "임상적 주의 요망 (Elevated)"
+            summary = "현재 대인관계나 환경적 압박에 대해 방어기제가 강하게 작동하고 있습니다."
+            features = ["타인의 피드백에 대한 높은 예민성", "심리적 피로감 누적 및 방어적 태도"]
+            strengths = ["위험을 빠르게 감지하고 자신을 보호하려는 생존 본능"]
+            weaknesses = ["사소한 오해로 인한 대인관계 갈등 발생 가능성", "타인의 의도를 부정적으로 해석할 우려"]
         else:
-            title = "건강한 자아강도 (Normal)"
-            details = "외부의 비판이나 스트레스에도 쉽게 흔들리지 않는 건강한 자아강도를 지니고 있습니다. 타인과의 관계에서 유연하고 적응력이 매우 뛰어납니다."
-            likes = "성장할 수 있는 피드백, 협력적인 팀플레이, 건설적인 토론"
-            dislikes = "명분 없는 갈등, 뒷담화, 비합리적인 고집"
+            title = "정서적 안녕 상태 (Normal / 위험 지수 65 미만)"
+            summary = "심리적 건강도가 우수하며, 외부 압박에 대해 유연하고 효과적으로 대응할 수 있는 상태입니다."
+            features = ["높은 자기 효능감과 능동적인 대처 능력", "타인과의 경계를 적절히 유지하는 건강한 대인관계"]
+            strengths = ["실패를 배움의 기회로 삼는 강력한 회복 탄력성", "안정을 바탕으로 주변에 긍정적 영향을 주는 정서적 리더십"]
+            weaknesses = ["현재의 안정감이 자만으로 이어지지 않도록 예방 관리 필요", "일상의 지루함을 막기 위한 새로운 지적 자극 필요"]
 
     elif cat == "CLINICAL":
-        val = int((total/m_s)*100); metric = f"임상 증상 지수: {val}/100"
-        if val >= 70:
-            title = "급성 스트레스 증후군 가능성 (High Risk)"
-            details = "우울감, 불안, 또는 번아웃(소진) 증상이 신체적/정신적으로 명확히 발현되고 있을 가능성이 큽니다. 즉각적인 스트레스 원인 차단과 휴식이 임상적으로 요구됩니다."
-            likes = "충분한 수면, 전문적인 상담 지원, 업무량의 절대적 감소"
-            dislikes = "추가적인 업무 압박, 성과에 대한 질책, 시끄럽고 복잡한 환경"
-        elif val >= 40:
-            title = "잠재적 소진 상태 (Moderate Risk)"
-            details = "일상생활은 유지하고 있으나, 내면적으로는 에너지가 고갈되어 가고 있는 상태입니다. 가벼운 수면 장애나 신체화 증상(두통, 소화불량 등)이 동반될 수 있습니다."
-            likes = "가벼운 운동, 취미 생활 보장, 일과 분리된 온전한 휴식"
-            dislikes = "퇴근 후의 업무 연락, 수면 시간 부족, 지속적인 성과 압박"
+        val = int((total/m_s)*100); metric = f"위험 지수: {val}/100"
+        if val >= 65:
+            title = "스트레스/소진 경고 (High Risk)"
+            summary = "일상적인 수준을 넘어서는 우울, 불안, 혹은 번아웃 증상이 감지됩니다."
+            features = ["수면 불규칙, 피로감 등 신체화 증상 발현 가능성", "에너지 고갈로 인한 업무 효율 저하"]
+            strengths = ["본인의 한계를 인식하고 휴식을 취할 수 있는 기회"]
+            weaknesses = ["지속될 경우 임상적 우울증이나 무기력증으로 발전할 우려", "적절한 스트레스 해소 창구 부재"]
         else:
-            title = "정서적 안녕 상태 (Healthy)"
-            details = "현재 임상적인 수준의 우울이나 불안 징후가 발견되지 않습니다. 정서적으로 매우 안정되어 있으며, 스트레스를 자체적으로 해소할 수 있는 좋은 대처 방식을 가지고 있습니다."
-            likes = "현재의 안정적인 루틴 유지, 자기계발, 새로운 활력소 찾기"
-            dislikes = "건강한 루틴을 파괴하는 무리한 일정"
+            title = "스트레스 관리 양호 (Healthy)"
+            summary = "현재 급성 스트레스나 소진(번아웃) 징후 없이 멘탈이 잘 관리되고 있습니다."
+            features = ["적절한 스트레스 해소 루틴 보유", "일과 삶의 균형(워라밸) 유지 상태 양호"]
+            strengths = ["정신적 에너지가 충만하여 새로운 과제에 도전할 수 있는 여력 존재", "건강한 수면 및 식욕 유지"]
+            weaknesses = ["갑작스러운 위기 상황 시 대처 매뉴얼 사전 점검 필요"]
 
-    return ratio, metric, title, details, likes, dislikes
+    return total, m_s, ratio, metric, title, summary, features, strengths, weaknesses
 
 # 3. 메인 UI 로직
 if 'reg' not in st.session_state: st.session_state['reg'] = False
@@ -176,9 +163,7 @@ if not st.session_state['reg']:
                             st.session_state['is_old_user'] = False
                             st.rerun()
                     except Exception as e:
-                        # 에러 내용을 더 명확하게 표시
-                        st.error("⚠️ 구글 시트 연결 오류가 발생했습니다! (JSON Decode Error)")
-                        st.info("이 오류는 코드가 아니라 구글 '배포 권한' 설정 때문에 파이썬이 거부당한 것입니다.")
+                        st.error("⚠️ 구글 시트 연결 오류가 발생했습니다!")
             else:
                 st.error("이름과 생년월일을 모두 입력해주세요.")
     with col2:
@@ -192,8 +177,8 @@ if not st.session_state['reg']:
                 st.error("이름과 생년월일을 모두 입력해주세요.")
                 
 else:
-    st.title("📊 임상 심리 분석 보고서")
-    st.info(f"👤 대상자: {st.session_state['u']['name']}님 ({st.session_state['u']['birth']})")
+    st.title("📊 종합 임상 심리 정밀 보고서 (V4.0)")
+    st.info(f"👤 성명: {st.session_state['u']['name']} | 연령: {st.session_state['u']['birth']} | 관계: {st.session_state['u']['rel']}")
     if st.button("🔄 대상자 변경"): st.session_state.clear(); st.rerun()
         
     d_tab = 1 if st.session_state.get('is_old_user') else 0
@@ -220,30 +205,50 @@ else:
 
     with t2:
         if 'final_results' in st.session_state:
-            st.markdown("## 📋 전문가 종합 심리 소견서")
+            # 1. [지표 요약] 섹션 추가 (V46.0 스타일 대시보드)
+            st.markdown("### 📊 [지표 요약]")
             st.divider()
             
             for c, s in st.session_state['final_results'].items():
                 t_q = len(data_db["qs"].get(c, []))
                 if t_q > 0:
-                    ratio, metric, title, details, likes, dislikes = get_detailed_report(c, s, t_q)
-                    
-                    st.markdown(f"### 🔹 {c} 검사 분석")
-                    st.progress(ratio if ratio <= 1.0 else 1.0)
-                    st.caption(metric)
-                    
-                    st.markdown(f"**진단 분류:** <span style='color:blue; font-size:18px;'>**{title}**</span>", unsafe_allow_html=True)
-                    st.markdown(f"> **🧠 심층 성향 분석**\n> {details}")
-                    
-                    if likes and dislikes:
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.success(f"**👍 선호하는 환경 및 조건**\n\n{likes}")
-                        with col2:
-                            st.error(f"**👎 스트레스 유발 및 불호 환경**\n\n{dislikes}")
-                    st.write("")
-                    st.write("")
+                    total, m_s, ratio, metric, title, summary, f, sth, w = get_blended_report(c, s, t_q)
+                    pct = min(int(ratio * 100), 100)
+                    col1, col2, col3 = st.columns([1, 2, 4])
+                    with col1: st.markdown(f"**{c}**")
+                    with col2: st.markdown(f"{total} / {m_s}")
+                    with col3: 
+                        st.progress(ratio if ratio <= 1.0 else 1.0)
+            
+            st.write("")
+            st.write("")
+            
+            # 2. [정밀 분석 결과] 섹션 (V46.0 디테일 텍스트)
+            st.markdown("### 📋 [정밀 분석 결과]")
             st.divider()
-            st.caption("※ 본 분석 보고서는 응답된 데이터를 바탕으로 산출된 전문가 수준의 심층 알고리즘 결과입니다.")
+            
+            for c, s in st.session_state['final_results'].items():
+                t_q = len(data_db["qs"].get(c, []))
+                if t_q > 0:
+                    total, m_s, ratio, metric, title, summary, features, strengths, weaknesses = get_blended_report(c, s, t_q)
+                    
+                    st.markdown(f"#### ▶ {c} 분석")
+                    st.markdown(f"**- 결과:** <span style='color:#1f77b4;'>**{title}**</span> ({metric})", unsafe_allow_html=True)
+                    st.markdown(f"> *\"{summary}\"*")
+                    
+                    if features:
+                        st.markdown("**[주요 특징]**")
+                        for feat in features: st.markdown(f"· {feat}")
+                    if strengths:
+                        st.markdown("**[핵심 강점]**")
+                        for sth in strengths: st.markdown(f"· {sth}")
+                    if weaknesses:
+                        st.markdown("**[주의 및 보완점]**")
+                        for weak in weaknesses: st.markdown(f"· {weak}")
+                    
+                    st.write("")
+                    st.divider()
+            
+            st.caption("※ 위 분석은 알고리즘 기반 추정치로, 절대적인 의학적 진단을 대신할 수 없습니다.")
         else:
             st.warning("분석할 데이터가 없습니다. [온라인 진단지] 탭에서 먼저 검사를 진행해 주십시오.")

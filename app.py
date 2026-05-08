@@ -6,7 +6,7 @@ st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
 # 🚨 [새로 발급받으신 주소가 완벽하게 적용되었습니다!]
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZDWYBvuOiv-VSoEPH5sDMkHWJ-O46V-SKRFdimt324jyDCYed-aZIBBAbC2WEfAqqTQ/exec"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzd7kpYzj6kp2T9r-waR_Y4wZZ4_SucRe6WcEhaR16k7TljQg1dtA7lrCUb-yCHERwS-g/exec"
 
 @st.cache_data
 def load_data():

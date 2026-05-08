@@ -19,7 +19,7 @@ hide_st_style = """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # [필수] 박준우님의 구글 웹 앱 URL (배포된 URL)
-GOOGLE_SCRIPT_URL = "여기에_복사한_웹앱_URL을_넣으세요"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxICsSW3rWOu2rwMbFLuKSwrMdp88X40tx1mAJCx-j5akiaL5KbTWzDgzsLnhw1ljtM-Q/exec"
 
 # 2. 데이터 로드 로직
 @st.cache_data

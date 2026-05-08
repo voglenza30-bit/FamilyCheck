@@ -6,7 +6,7 @@ st.set_page_config(page_title="심리 진단 시스템", layout="wide")
 st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
 # [수정] 1단계에서 새로 배포한 주소를 여기에 넣으세요!
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxICsSW3rWOu2rwMbFLuKSwrMdp88X40tx1mAJCx-j5akiaL5KbTWzDgzsLnhw1ljtM-Q/exec"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3JW6E2Te8DtDS6WXBAEiMXwwh0XTNTNWi40vhApQ_ymBsTVMzqwsEE23A9leYo8nU6Q/exec"
 
 @st.cache_data
 def load_data():

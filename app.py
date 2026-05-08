@@ -14,7 +14,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # [필수 확인] 새로 배포하신 구글 웹 앱 URL을 여기에 꼭 넣으세요!
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3JW6E2Te8DtDS6WXBAEiMXwwh0XTNTNWi40vhApQ_ymBsTVMzqwsEE23A9leYo8nU6Q/exec"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvYpP9t4OFqTJRhHWZL2-YhFkw9QjoIBUrLdevUH42uqKicdakSw7DfqzgBZjYNpS1pQ/exec"
 
 @st.cache_data
 def load_data():

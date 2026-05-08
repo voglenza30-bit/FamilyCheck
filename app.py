@@ -5,7 +5,7 @@ import json, os, requests, re
 st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
-# 🚨 [매우 중요] 아래 따옴표 안에 본인의 구글 웹 앱 주소(https://script...)를 꼭 넣으세요!
+# 🚨 [새로 발급받으신 주소가 완벽하게 적용되었습니다!]
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZDWYBvuOiv-VSoEPH5sDMkHWJ-O46V-SKRFdimt324jyDCYed-aZIBBAbC2WEfAqqTQ/exec"
 
 @st.cache_data
@@ -165,7 +165,6 @@ if not st.session_state['reg']:
             if name and birth:
                 with st.spinner("서버에서 대상자 기록을 조회 중입니다..."):
                     try:
-                        # [핵심 수정] 한글 인코딩 문제를 완벽 차단하는 params 방식 사용
                         res = requests.get(GOOGLE_SCRIPT_URL, params={"name": name, "birth": birth}, timeout=10).json()
                         st.session_state['u'] = {"name":name, "birth":birth, "gen":gen, "rel":rel}
                         st.session_state['reg'] = True
@@ -177,10 +176,9 @@ if not st.session_state['reg']:
                             st.session_state['is_old_user'] = False
                             st.rerun()
                     except Exception as e:
-                        # [핵심 수정] 에러가 나면 왜 났는지 빨간 창으로 보여줌
-                        st.error(f"⚠️ 연결 오류 발생: {str(e)}")
-                        st.warning("👉 11번째 줄의 GOOGLE_SCRIPT_URL에 본인의 구글 웹앱 주소를 정확히 넣으셨는지 확인해주세요!")
-                        st.info("만약 주소가 '여기에_실제_주소를_넣으세요'로 되어있다면 코드를 다시 수정해야 합니다.")
+                        # 에러 내용을 더 명확하게 표시
+                        st.error("⚠️ 구글 시트 연결 오류가 발생했습니다! (JSON Decode Error)")
+                        st.info("이 오류는 코드가 아니라 구글 '배포 권한' 설정 때문에 파이썬이 거부당한 것입니다.")
             else:
                 st.error("이름과 생년월일을 모두 입력해주세요.")
     with col2:

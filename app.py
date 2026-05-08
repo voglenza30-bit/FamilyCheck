@@ -6,7 +6,7 @@ st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 st.markdown("<style>#MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
 # [필수 확인] 배포하신 구글 웹 앱 URL을 넣으세요
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvYpP9t4OFqTJRhHWZL2-YhFkw9QjoIBUrLdevUH42uqKicdakSw7DfqzgBZjYNpS1pQ/exec"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWqiJN-vIdai_MeUwtbA2GuPe3yPyvot7oDQ_oX8EK_z5pcSf3edvJwCNZheUuhiP2ww/exec"
 
 @st.cache_data
 def load_data():

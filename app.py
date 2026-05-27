@@ -8,8 +8,11 @@ st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 
 # 2. Gemini API 키 설정 및 AI 모델 준비 (404 에러 방지를 위해 latest 버전 명시)
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-# 변경 후 (안정적인 최신 플래시 모델)
+# 변경 전 (에러 나는 코드)
 model = genai.GenerativeModel('gemini-1.5-flash')
+
+# 💡 변경 후 (무조건 작동하는 기본 안정화 모델)
+model = genai.GenerativeModel('gemini-pro')
 
 # 사이드바 및 버튼 등 인쇄 시 불필요한 요소 숨기는 CSS
 hide_elements = """

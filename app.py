@@ -7,7 +7,7 @@ import google.generativeai as genai
 st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 
 # 2. Gemini API 키 설정 및 AI 모델 준비 (Plain Text 연결)
-genai.configure(api_key="AIzaSyBCWDTHq5cBn8kUXCfmmTAvWxMdArOfPsU")
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 model = genai.GenerativeModel('gemini-1.5-pro')
 
 # 사이드바 및 버튼 등 인쇄 시 불필요한 요소 숨기는 CSS

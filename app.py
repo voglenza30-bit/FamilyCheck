@@ -6,13 +6,28 @@ import google.generativeai as genai
 # 1. 페이지 설정
 st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
 
-# 2. Gemini API 키 설정 및 AI 모델 준비 (404 에러 방지를 위해 latest 버전 명시)
+# 2. Gemini API 키 설정 및 [스마트 모델 자동 탐색기]
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-# 변경 전 (에러 나는 코드)
-model = genai.GenerativeModel('gemini-1.5-flash')
 
-# 💡 변경 후 (무조건 작동하는 기본 안정화 모델)
-model = genai.GenerativeModel('gemini-pro')
+try:
+    # 현재 API 키로 접근 가능한 모델 목록을 스캔합니다.
+    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    target_model = "gemini-1.5-pro" # 기본값
+    
+    # 순위별로 찔러보고 열려있는 가장 좋은 모델을 선택
+    for preferred in ["models/gemini-1.5-pro", "models/gemini-1.5-pro-latest", "models/gemini-1.5-flash", "models/gemini-pro"]:
+        if preferred in available_models:
+            target_model = preferred.replace("models/", "")
+            break
+            
+    # 만약 위 이름들이 다 없다면, 목록에 있는 첫 번째 모델 강제 할당
+    if available_models and "models/" + target_model not in available_models:
+        target_model = available_models[0].replace("models/", "")
+        
+    model = genai.GenerativeModel(target_model)
+except Exception as e:
+    st.error(f"AI 모델 스캔 중 오류 발생 (하지만 기본 모델로 진행 시도): {e}")
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
 # 사이드바 및 버튼 등 인쇄 시 불필요한 요소 숨기는 CSS
 hide_elements = """
@@ -53,7 +68,6 @@ def get_raw_analysis(cat, score_data, t_q):
         total = score_data; ans_list = []
         
     m_s = t_q * 4 if t_q > 0 else 1
-    
     title = ""; summary = ""
     
     if cat == "IQ":
@@ -174,7 +188,7 @@ else:
             st.caption("실제 대학병원 심리평가보고서(Full Battery Assessment) 형식으로 통합 분석합니다.")
             
             if st.button("🧠 전문 임상심리사 소견서 생성하기", use_container_width=True):
-                with st.spinner("AI가 각 지표 간의 연관성을 심층 분석하여 전문가용 보고서를 작성 중입니다... (약 15~30초 소요)"):
+                with st.spinner(f"AI가 각 지표 간의 연관성을 심층 분석하여 전문가용 보고서를 작성 중입니다... (선택된 엔진: {target_model})"):
                     try:
                         # 1. AI에게 던져줄 1차 전처리 데이터 조립
                         raw_data_context = ""

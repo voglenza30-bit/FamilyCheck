@@ -1,9 +1,14 @@
 import streamlit as st
 import json, os, requests, re
 import streamlit.components.v1 as components
+import google.generativeai as genai
 
 # 1. 페이지 설정
 st.set_page_config(page_title="정밀 심리 진단 시스템", layout="wide")
+
+# 2. Gemini API 키 설정 및 AI 모델 준비 (Plain Text 연결)
+genai.configure(api_key="AIzaSyBCWDTHq5cBn8kUXCfmmTAvWxMdArOfPsU")
+model = genai.GenerativeModel('gemini-1.5-pro')
 
 # 사이드바 및 버튼 등 인쇄 시 불필요한 요소 숨기는 CSS
 hide_elements = """
@@ -18,7 +23,7 @@ hide_elements = """
 """
 st.markdown(hide_elements, unsafe_allow_html=True)
 
-# 🚨 [필수 확인] 본인의 구글 웹 앱 URL을 넣으세요 (exec로 끝나는 주소)
+# 3. 구글 웹 앱 URL 설정
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOXsbz1hKT_dPN6pJDn6QAlEginqXIOLBXiFZtV2kKffbZekvMVOIg1LZ19h4dV0Lyjw/exec"
 
 @st.cache_data
@@ -61,14 +66,16 @@ EXPERT_DB = {
 # ==========================================
 def get_blended_report(cat, score_data, t_q):
     if isinstance(score_data, list):
-        total = sum(score_data); ans_list = score_data
+        total = sum(score_data)
+        ans_list = score_data
     else:
-        total = score_data; ans_list = []
+        total = score_data
+        ans_list = []
         
     m_s = t_q * 4 if t_q > 0 else 1
     ratio = total / m_s
     
-    metric = ""; title = ""; summary = ""; 
+    metric = ""; title = ""; summary = ""
     features = []; strengths = []; weaknesses = []
     
     if cat == "IQ":
@@ -165,7 +172,7 @@ def get_blended_report(cat, score_data, t_q):
 
     return total, m_s, ratio, metric, title, summary, features, strengths, weaknesses
 
-# 3. 메인 UI 로직
+# 4. 메인 UI 로직
 if 'reg' not in st.session_state: st.session_state['reg'] = False
 
 if not st.session_state['reg']:
@@ -192,7 +199,7 @@ if not st.session_state['reg']:
                             st.session_state['is_old_user'] = False
                             st.rerun()
                     except Exception as e:
-                        st.error("⚠️ 구글 시트 연결 오류가 발생했습니다!")
+                        st.error("⚠️ 구글 시트 연결 오류가 발생했습니다! (URL을 확인해주세요)")
             else:
                 st.error("이름과 생년월일을 모두 입력해주세요.")
     with col2:
@@ -208,7 +215,9 @@ if not st.session_state['reg']:
 else:
     st.title("📊 종합 임상 심리 정밀 보고서")
     st.info(f"👤 성명: {st.session_state['u']['name']} | 연령: {st.session_state['u']['birth']} | 관계: {st.session_state['u']['rel']}")
-    if st.button("🔄 대상자 변경"): st.session_state.clear(); st.rerun()
+    if st.button("🔄 대상자 변경"): 
+        st.session_state.clear()
+        st.rerun()
         
     t1, t2 = st.tabs(["📄 온라인 진단지", "📑 종합 소견서"])
     
@@ -226,10 +235,15 @@ else:
                     cur_s[c] = ans_array
                     
         if st.button("🚀 검사 완료 및 전문 분석 요청", use_container_width=True):
-            requests.post(GOOGLE_SCRIPT_URL, data=json.dumps({"user":st.session_state['u'], "scores":cur_s}))
+            try:
+                requests.post(GOOGLE_SCRIPT_URL, data=json.dumps({"user":st.session_state['u'], "scores":cur_s}), timeout=10)
+            except Exception as e:
+                st.warning("데이터는 저장되었으나 서버(Google Apps Script) 전송에 실패했습니다.")
+                
             st.session_state['final_results'] = cur_s
             st.session_state['is_old_user'] = True
-            st.success("데이터가 안전하게 전송되었습니다."); st.rerun()
+            st.success("분석이 완료되었습니다.")
+            st.rerun()
 
     with t2:
         if 'final_results' in st.session_state:
@@ -320,7 +334,31 @@ else:
                     mime="text/plain",
                     use_container_width=True
                 )
+                
+            # 4. [AI 정밀 종합 심리 소견서 구역]
+            st.divider()
+            st.markdown("### ✨ [AI 임상 심리 정밀 소견 분석]")
+            
+            if st.button("🧠 임상심리사 버전 종합 소견서 생성하기", use_container_width=True):
+                with st.spinner("AI 임상심리사가 데이터를 종합 분석하여 고유 소견서를 작성 중입니다... (약 10~20초 소요)"):
+                    try:
+                        user_data_text = f"이름: {st.session_state['u']['name']}, 연령: {st.session_state['u']['birth']}, 점수 데이터: {st.session_state['final_results']}"
+                        
+                        prompt = f"""
+                        당신은 10년 차 전문 정신건강임상심리사입니다. 
+                        다음 내담자의 심리검사 데이터를 바탕으로, 각 항목이 분절되지 않고 
+                        하나의 스토리로 자연스럽게 이어지는 깊이 있는 종합 심리 평가 보고서를 작성해 주세요.
+                        기계적인 분석이 아닌, 실제 임상 현장의 보고서처럼 원인과 결과를 유기적으로 엮어 전문적인 심리학 용어를 사용해 주세요.
+                        
+                        [내담자 데이터]
+                        {user_data_text}
+                        """
+                        
+                        response = model.generate_content(prompt)
+                        st.success("AI 정밀 소견서 작성이 완료되었습니다.")
+                        st.info("📊 전문 임상 분석 소견")
+                        st.write(response.text)
+                    except Exception as e:
+                        st.error(f"AI 연동 중 에러가 발생했습니다: {e}")
         else:
             st.warning("분석할 데이터가 없습니다. [온라인 진단지] 탭에서 먼저 검사를 진행해 주십시오.")
-
-# --- app.py 코드 끝 ---

@@ -9,7 +9,7 @@ st.set_page_config(page_title="정밀 심리 진단 시스템 2.0", layout="wide
 # 2. Gemini API 세팅 (자동 모델 탐색 유지)
 # 2. Gemini API 세팅 (대표님이 확인하신 최신 3.5 엔진으로 직결)
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel('gemini-3.5-flash')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # 인쇄 및 그래프용 CSS
 st.markdown("""

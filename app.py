@@ -22,10 +22,19 @@ except Exception as e:
 # 인쇄 및 그래프용 CSS
 st.markdown("""
     <style>
-    #MainMenu, footer, header {visibility: hidden;}
+    # 변경 전 (사이드바까지 다 숨겨버렸던 몹쓸 코드)
     @media print {
         .stButton, .stDownloadButton, [data-testid="stSidebar"] { display: none !important; }
         .main { background-color: white !important; padding: 0 !important; }
+    }
+
+# 💡 변경 후 (사이드바는 살려두고, 진짜 인쇄할 때만 숨기는 똑똑한 코드)
+    @media print {
+        .stButton, .stDownloadButton { display: none !important; }
+        .main { background-color: white !important; padding: 0 !important; }
+    }
+    /* 모바일과 PC에서 사이드바가 강제로 숨겨지지 않도록 방지 */
+    [data-testid="stSidebar"] { display: flex !important; }
     }
     .t-score-bar { background-color: #e2e8f0; border-radius: 5px; height: 25px; width: 100%; position: relative; margin-bottom: 10px; }
     .t-score-fill { background-color: #005088; height: 100%; border-radius: 5px; color: white; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 12px; font-weight: bold; }

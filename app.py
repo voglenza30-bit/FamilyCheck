@@ -17,7 +17,8 @@ st.set_page_config(
 # 2. Gemini API 세팅
 # =============================================
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = gemini-2.0-flash → gemini-2.0-flash-lite → gemini-1.5-flash
+→ gemini-1.5-flash-latest → gemini-1.5-pro → ...
 
 # =============================================
 # 3. 전체 스타일 (CSS 오류 완전 수정)

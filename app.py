@@ -17,8 +17,26 @@ st.set_page_config(
 # 2. Gemini API 세팅
 # =============================================
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = gemini-2.0-flash → gemini-2.0-flash-lite → gemini-1.5-flash
-→ gemini-1.5-flash-latest → gemini-1.5-pro → ...
+
+@st.cache_resource
+def get_model():
+    """Gemini 3.5 Flash (대표님 사용 모델) — 정식명 우선, 순차 폴백"""
+    candidates = [
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-preview-05-20",
+        "gemini-2.5-flash-preview",
+        "gemini-2.0-flash",
+    ]
+    for name in candidates:
+        try:
+            m = genai.GenerativeModel(name)
+            m.generate_content("ok", generation_config={"max_output_tokens": 1})
+            return m, name
+        except Exception:
+            continue
+    raise RuntimeError("Gemini 모델 연결 실패. API 키와 모델 접근 권한을 확인해 주세요.")
+
+model, _model_name = get_model()
 
 # =============================================
 # 3. 전체 스타일 (CSS 오류 완전 수정)
@@ -448,6 +466,7 @@ else:
         st.sidebar.markdown("**완료된 검사:** " + " · ".join(completed))
 
     st.sidebar.divider()
+    st.sidebar.caption(f"🤖 AI 엔진: `{_model_name}`")
     if st.sidebar.button("🔄 초기화 (처음으로)", use_container_width=True):
         st.session_state.clear()
         st.rerun()

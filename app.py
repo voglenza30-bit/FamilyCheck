@@ -10,7 +10,7 @@ from streamlit_drawable_canvas import st_canvas
 # 1. 페이지 설정
 # =============================================
 st.set_page_config(
-    page_title="정밀 심리 진단 시스템 3.0",
+    page_title="정밀 심리 진단 시스템 4.0",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -97,7 +97,6 @@ db = load_data()
 # =============================================
 # 5. UI 렌더링 유틸리티 함수
 # =============================================
-# (1) 일반 T-Score 그래프
 def t_score_html(label, raw_score, max_possible, color="#005088", description=""):
     ratio = raw_score / max_possible if max_possible > 0 else 0
     t_val = max(30, min(80, int(ratio * 40 + 30)))
@@ -124,14 +123,13 @@ def t_score_html(label, raw_score, max_possible, color="#005088", description=""
     </div>
     """
 
-# (2) IQ 전용 그래프 (지능지수로 변환)
 def iq_score_html(label, iq_score, color="#005088", description=""):
     if iq_score >= 120: level = "최우수"; badge_class = "badge-normal"
     elif iq_score >= 110: level = "우수"; badge_class = "badge-normal"
     elif iq_score >= 90: level = "평균"; badge_class = "badge-normal"
     else: level = "경계"; badge_class = "badge-caution"
     
-    bar_pct = max(0, min(100, (iq_score - 70) / 70 * 100)) # 70~140 스케일
+    bar_pct = max(0, min(100, (iq_score - 70) / 70 * 100)) 
     
     return f"""
     <div style="margin-bottom:18px;">
@@ -149,7 +147,6 @@ def iq_score_html(label, iq_score, color="#005088", description=""):
     </div>
     """
 
-# (3) MBTI 전용 4축 대립 그래프
 def mbti_html(mbti_type, dims, mid):
     axes = [
         ("내향(I)", "외향(E)", dims[0]),
@@ -173,14 +170,14 @@ def mbti_html(mbti_type, dims, mid):
     html += '<div style="font-size:11px; color:#64748b; margin-top:5px;">막대가 오른쪽(중앙선 이상)으로 치우칠수록 우측 성향(E, S, T, J)이 강함을 의미합니다.</div></div>'
     return html
 
-# 그림판 렌더링
+# 💡 캔버스 사이즈 최적화
 def draw_canvas(label, description, key_name):
     st.write(f"**{label}**")
     st.caption(description)
     canvas_result = st_canvas(
         fill_color="rgba(255, 255, 255, 1)",
         stroke_width=3, stroke_color="#000000", background_color="#ffffff",
-        height=350, width=500, drawing_mode="freedraw", key=key_name,
+        height=320, width=420, drawing_mode="freedraw", key=key_name,
     )
     if canvas_result.image_data is not None:
         img = Image.fromarray(canvas_result.image_data.astype('uint8')).convert('RGB')
@@ -195,7 +192,6 @@ SCALE_INFO = {
     "CLINICAL": {"color": "#f59e0b", "label": "임상 증상 (CLINICAL)", "desc": "주요 임상 증상 스크리닝", "max_per_item": 4},
 }
 
-# 계산 엔진
 def compute_scores(scores_dict):
     result = {}
     for key, answers in scores_dict.items():
@@ -213,11 +209,9 @@ def compute_scores(scores_dict):
             "pct": total / max_possible * 100 if max_possible > 0 else 0
         }
         
-        # IQ 계산 (70~140 스케일 환산)
         if key == "IQ":
             result_item["iq_val"] = int((total / max_possible) * 70 + 70) if max_possible > 0 else 100
             
-        # MBTI 16유형 및 축 점수 계산
         if key == "MBTI" and n > 0:
             dims = [0, 0, 0, 0]
             for idx, a in enumerate(valid_answers):
@@ -243,7 +237,7 @@ if 'reg' not in st.session_state: st.session_state['reg'] = False
 if not st.session_state['reg']:
     st.markdown("""
     <div style="text-align:center; padding:40px 0 20px;">
-        <h1 style="color:#005088;">🧠 Full Battery 3.0 (Vision AI 탑재)</h1>
+        <h1 style="color:#005088;">🧠 Full Battery 4.0 (임상 정석 HTP 분리형)</h1>
         <h3 style="color:#475569; font-weight:400;">정밀 심리 진단 시스템</h3>
     </div>
     """, unsafe_allow_html=True)
@@ -292,7 +286,7 @@ else:
     st.sidebar.divider()
     st.sidebar.caption(f"🤖 AI 엔진: `{_model_name}`")
     
-    # 💡 과거 DB 기록 때문에 '보통'이 뜨는 것을 막기 위한 가장 확실한 초기화 버튼
+    # 💡 찌꺼기 데이터 강제 청소 버튼
     if st.sidebar.button("🔄 완전 초기화 (새로 시작)", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -312,7 +306,7 @@ else:
                 ans_array = []
                 saved = cur_s.get(c, [])
                 for i, q in enumerate(qs):
-                    # 💡 완전 빈칸 보장 로직 (DB에 저장된 값이 없거나 유효하지 않으면 무조건 None)
+                    # 완전 빈칸 보장 로직
                     default_idx = saved[i] if (i < len(saved) and saved[i] is not None and str(saved[i]).isdigit()) else None
                     
                     ans = st.radio(
@@ -349,22 +343,29 @@ else:
 
     # ================= 3단계 =================
     elif menu == "🎨 3단계: 정밀 투사그림":
-        st.header("🎨 정밀 투사 그림 검사 (마우스/터치 드로잉)")
-        st.info("비전 AI가 필압, 위치, 누락된 요소를 정밀하게 읽어냅니다. 캔버스에 직접 그려주세요.")
+        st.header("🎨 임상 표준 투사 그림 검사 (개별 캔버스)")
+        st.info("임상 심리 검사의 정석에 따라, 각 항목을 개별 스케치북에 따로 그려주세요.")
 
         imgs = {}
         c1, c2 = st.columns(2)
+        
+        # 💡 [핵심 수정] HTP를 집, 나무, 사람 3개의 캔버스로 완전 분리
         with c1:
-            imgs['htp'] = draw_canvas("1. HTP (집-나무-사람)", "한 화면에 집, 나무, 사람의 전신을 그려주세요.", "cv_htp")
+            imgs['house'] = draw_canvas("1. 집 (House)", "여백을 활용하여 '집'을 그려주세요.", "cv_house")
             st.divider()
-            imgs['kfd'] = draw_canvas("3. KFD (동적 가족화)", "본인을 포함한 가족들이 무언가를 하고 있는 모습을 그려주세요.", "cv_kfd")
+            imgs['person'] = draw_canvas("3. 사람 (Person)", "얼굴뿐만 아니라 '사람의 전신'을 그려주세요.", "cv_person")
+            st.divider()
+            imgs['kfd'] = draw_canvas("5. 동적 가족화 (KFD)", "본인을 포함한 가족들이 무언가를 하고 있는 모습을 그려주세요.", "cv_kfd")
+        
         with c2:
-            imgs['pitr'] = draw_canvas("2. PITR (빗속의 사람)", "비가 내리는 환경 속에 있는 사람을 그려주세요.", "cv_pitr")
+            imgs['tree'] = draw_canvas("2. 나무 (Tree)", "자유롭게 '나무' 한 그루를 그려주세요.", "cv_tree")
+            st.divider()
+            imgs['pitr'] = draw_canvas("4. 빗속의 사람 (PITR)", "비가 내리는 환경 속에 있는 사람을 그려주세요.", "cv_pitr")
 
-        if st.button("💾 그림 데이터 비전 AI에 전송", use_container_width=True, type="primary"):
+        if st.button("💾 개별 그림 데이터 비전 AI에 전송", use_container_width=True, type="primary"):
             saved_imgs = {k: v for k, v in imgs.items() if v is not None}
             st.session_state['clinical_images'] = saved_imgs
-            st.success(f"✅ {len(saved_imgs)}개의 그림 저장 완료! 4단계 종합 결과지로 이동하세요.")
+            st.success(f"✅ {len(saved_imgs)}개의 스케치 데이터 저장 완료! 4단계 종합 결과지로 이동하세요.")
 
     # ================= 4단계 =================
     elif menu == "📑 4단계: 종합 결과지":
@@ -380,7 +381,6 @@ else:
             st.subheader("📊 Clinical Profile — 다차원 임상 지표")
             cols = st.columns(len(score_stats) if score_stats else 1)
             
-            # 대시보드 상단 카드 렌더링
             for i, (key, stat) in enumerate(score_stats.items()):
                 info = SCALE_INFO.get(key, {})
                 if key == "IQ" and "iq_val" in stat:
@@ -402,7 +402,6 @@ else:
                     </div>
                     """, unsafe_allow_html=True)
 
-            # 하단 세부 그래프 렌더링 (구분 분기)
             st.markdown("<br>", unsafe_allow_html=True)
             for key, stat in score_stats.items():
                 info = SCALE_INFO.get(key, {})
@@ -432,21 +431,32 @@ else:
                     1. 객관식 지표 (IQ 및 성격유형 포함): \n{score_summary}
                     2. SCT 응답: \n{sct_lines}
                     
-                    [그림 분석 및 작성 지침]
-                    - 첨부된 이미지를 직접 눈으로 확인하고(HTP, PITR, KFD 순서), 필압/크기/생략 요소 등을 전문적으로 서술하세요.
+                    [그림 분석 및 작성 지침 - 💡 매우 중요]
+                    - 내담자는 HTP(집, 나무, 사람)를 한 장이 아닌 각각 독립적인 캔버스에 따로 그렸습니다.
+                    - 전달된 이미지들을 확인하여 각 캔버스(화면) 안에서 객체를 얼마나 꽉 차게 그렸는지, 혹은 작게 그렸는지 '공간 활용도(자아 크기)'를 독립적으로 분석하세요.
                     - 반드시 객관적인 전문가 평어체(~함, ~시사됨)를 사용하세요.
-                    - 내담자의 지능(IQ), 16가지 성격유형(MBTI) 특성과 투사 그림에서 나타난 무의식적 단서를 반드시 유기적으로 연결하여 해석하세요.
+                    - 내담자의 지능(IQ), 성격유형(MBTI) 특성과 투사 그림을 유기적으로 연결하여 해석하세요.
+                    
                     - 목차:
                       1. 인지 및 지능 기능
                       2. 기질 및 성격 특성 (16유형 중심)
-                      3. 정서 및 심리적 적응 (점수 + 그림 통합)
-                      4. 투사 검사(그림) 정밀 분석 소견
+                      3. 정서 및 심리적 적응
+                      4. 투사 검사(그림) 정밀 분석 소견 (집, 나무, 사람 개별 해석 포함)
                       5. 치료적 제언
                     """
                     
+                    # 💡 AI에게 어떤 이미지가 무슨 그림인지 이름표를 붙여서 전송
                     contents = [prompt]
                     if 'clinical_images' in st.session_state:
+                        labels = {
+                            'house': "[1번 캔버스: 집 그림]", 
+                            'tree': "[2번 캔버스: 나무 그림]", 
+                            'person': "[3번 캔버스: 사람 그림]", 
+                            'pitr': "[4번 캔버스: 빗속의 사람 그림]", 
+                            'kfd': "[5번 캔버스: 동적 가족화 그림]"
+                        }
                         for k, img in st.session_state['clinical_images'].items():
+                            contents.append(labels.get(k, "[첨부 그림]"))
                             contents.append(img)
                     
                     try:

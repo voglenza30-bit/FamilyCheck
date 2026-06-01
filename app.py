@@ -17,13 +17,12 @@ st.set_page_config(
 )
 
 # =============================================
-# 2. Gemini API 세팅 (클로드 버전 100% 유지)
+# 2. Gemini API 세팅 (클로드 연결 로직 100% 유지)
 # =============================================
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 @st.cache_resource
 def get_model():
-    """Gemini 최신 모델 순차 폴백 (클로드 원본 유지)"""
     candidates = [
         "gemini-3.5-flash",
         "gemini-3.1-pro",
@@ -44,7 +43,7 @@ def get_model():
 model, _model_name = get_model()
 
 # =============================================
-# 3. 전체 스타일 (클로드 CSS 유지 + 캔버스 최적화)
+# 3. CSS 스타일링 
 # =============================================
 st.markdown("""
 <style>
@@ -54,11 +53,8 @@ st.markdown("""
 }
 [data-testid="stSidebar"] { display: flex !important; }
 
-/* T-Score 바 차트 */
 .t-score-bar { background-color: #e2e8f0; border-radius: 6px; height: 28px; width: 100%; position: relative; margin-bottom: 12px; overflow: hidden; }
-.t-score-fill { height: 100%; border-radius: 6px; color: white; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; font-size: 13px; font-weight: bold; transition: width 0.5s ease; }
-
-/* 결과지 전용 스타일 */
+.t-score-fill { height: 100%; border-radius: 6px; color: white; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; font-size: 13px; font-weight: bold; }
 .report-header { background: linear-gradient(135deg, #005088 0%, #0077cc 100%); color: white; padding: 28px 32px; border-radius: 12px; margin-bottom: 28px; }
 .badge { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-right: 6px; }
 .badge-normal  { background: #d1fae5; color: #065f46; }
@@ -96,17 +92,15 @@ def load_data():
             "다른 사람들이 나를 ", "내가 바라는 이상적인 나는 ", "나에게 가장 힘들었던 경험은 "
         ]
     }
-
 db = load_data()
 
 # =============================================
-# 5. 유틸리티 함수 (클로드 버전 유지 및 캔버스 추가)
+# 5. 유틸리티 함수 (HTML 바 & 캔버스)
 # =============================================
 def t_score_html(label, raw_score, max_possible, color="#005088", description=""):
     if max_possible > 0: ratio = raw_score / max_possible
     else: ratio = 0
-    t_val = int(ratio * 40 + 30)   
-    t_val = max(30, min(80, t_val))
+    t_val = max(30, min(80, int(ratio * 40 + 30)))
     bar_pct = (t_val - 30) / 50 * 100  
 
     if t_val < 45: level = "낮음"; badge_class = "badge-normal"
@@ -130,7 +124,6 @@ def t_score_html(label, raw_score, max_possible, color="#005088", description=""
     </div>
     """
 
-# 캔버스 렌더링 함수
 def draw_canvas(label, description, key_name):
     st.write(f"**{label}**")
     st.caption(description)
@@ -146,7 +139,6 @@ def draw_canvas(label, description, key_name):
     )
     if canvas_result.image_data is not None:
         img = Image.fromarray(canvas_result.image_data.astype('uint8')).convert('RGB')
-        # 그려진 내용이 있는지 확인 (흰 바탕 제외)
         if np.sum(np.array(img) < 255) > 500:
             return img
     return None
@@ -162,10 +154,14 @@ SCALE_INFO = {
 def compute_scores(scores_dict):
     result = {}
     for key, answers in scores_dict.items():
-        if not answers or None in answers: continue
+        if not answers: continue
+        # None(미응답) 값은 합산에서 제외하고 정상 체크된 것만 계산
+        valid_answers = [a for a in answers if a is not None]
+        if not valid_answers: continue
+        
         info = SCALE_INFO.get(key, {})
-        total = sum(answers)
-        n = len(answers)
+        total = sum(valid_answers)
+        n = len(valid_answers)
         max_possible = n * info.get("max_per_item", 4)
         result[key] = {
             "total": total, "max": max_possible, 
@@ -181,7 +177,7 @@ if 'reg' not in st.session_state: st.session_state['reg'] = False
 if not st.session_state['reg']:
     st.markdown("""
     <div style="text-align:center; padding:40px 0 20px;">
-        <h1 style="color:#005088;">🧠 Full Battery 2.0 (Vision AI 탑재)</h1>
+        <h1 style="color:#005088;">🧠 Full Battery 3.0 (Vision AI 탑재)</h1>
         <h3 style="color:#475569; font-weight:400;">정밀 심리 진단 시스템</h3>
     </div>
     """, unsafe_allow_html=True)
@@ -236,6 +232,7 @@ else:
     # ================= 1단계 =================
     if menu == "📋 1단계: 객관식 검사":
         st.header("📋 객관식 정밀 진단 검사")
+        st.info("💡 각 문항은 초기 '선택 안 됨(빈칸)' 상태입니다. 본인에게 해당하는 정도를 빠짐없이 선택해 주세요.")
         opts = {0: "전혀 아니다", 1: "아니다", 2: "보통", 3: "그렇다", 4: "매우 그렇다"}
         cur_s = st.session_state.get('scores', {})
 
@@ -246,14 +243,29 @@ else:
                 ans_array = []
                 saved = cur_s.get(c, [])
                 for i, q in enumerate(qs):
-                    default_idx = saved[i] if i < len(saved) else None
-                    ans = st.radio(f"**{i+1}.** {q}", options=list(opts.keys()), format_func=lambda x: opts[x], horizontal=True, key=f"{c}_{i}", index=default_idx)
+                    # 핵심 수정 포인트: 과거 데이터가 없으면 무조건 None을 줘서 빈칸으로 시작
+                    default_idx = saved[i] if (i < len(saved) and saved[i] is not None) else None
+                    ans = st.radio(
+                        f"**{i+1}.** {q}", 
+                        options=list(opts.keys()), 
+                        format_func=lambda x: opts[x], 
+                        horizontal=True, 
+                        key=f"{c}_{i}", 
+                        index=default_idx
+                    )
                     ans_array.append(ans)
                 cur_s[c] = ans_array
 
         if st.button("🚀 검사 완료 및 임시 저장", use_container_width=True, type="primary"):
             st.session_state['scores'] = cur_s
-            st.success("✅ 저장 완료! 왼쪽 메뉴에서 2단계로 이동하세요.")
+            
+            # 하나라도 안 푼 문제(None)가 있는지 카운팅
+            missing_count = sum(1 for arr in cur_s.values() for a in arr if a is None)
+            
+            if missing_count > 0:
+                st.warning(f"⚠️ 아직 체크하지 않은 문항이 **{missing_count}개** 남아있습니다. 빠짐없이 체크해 주셔야 정확한 분석이 가능합니다.")
+            else:
+                st.success("✅ 모든 문항 체크 완료 및 저장! 왼쪽 메뉴에서 2단계로 이동하세요.")
 
     # ================= 2단계 =================
     elif menu == "✍️ 2단계: 문장완성(SCT)":
@@ -287,73 +299,80 @@ else:
     # ================= 4단계 =================
     elif menu == "📑 4단계: 종합 결과지":
         st.header("📑 종합 임상 심리평가보고서")
-        score_stats = compute_scores(st.session_state.get('scores', {}))
+        
+        # 아직 풀지 않은 객관식 문제가 있는지 검사
+        missing_count = sum(1 for arr in st.session_state.get('scores', {}).values() for a in arr if a is None)
+        
+        if missing_count > 0:
+            st.error(f"⚠️ 1단계 객관식 검사에서 아직 풀지 않은 문항이 {missing_count}개 있습니다. 모두 체크해야 점수 산출이 가능합니다.")
+        else:
+            score_stats = compute_scores(st.session_state.get('scores', {}))
 
-        st.subheader("📊 Clinical Profile — 다차원 T-Score")
-        cols = st.columns(len(score_stats) if score_stats else 1)
-        for i, (key, stat) in enumerate(score_stats.items()):
-            info = SCALE_INFO.get(key, {})
-            with cols[i]:
+            st.subheader("📊 Clinical Profile — 다차원 T-Score")
+            cols = st.columns(len(score_stats) if score_stats else 1)
+            for i, (key, stat) in enumerate(score_stats.items()):
+                info = SCALE_INFO.get(key, {})
+                with cols[i]:
+                    st.markdown(f"""
+                    <div class="score-card">
+                        <div class="score-val" style="color:{info.get('color','#005088')};">{stat['total']}</div>
+                        <div class="score-label">{info.get('label', key).split('(')[0]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            for key, stat in score_stats.items():
+                info = SCALE_INFO.get(key, {})
+                components.html(t_score_html(info.get('label', key), stat['total'], stat['max'], color=info.get('color', '#005088'), description=info.get('desc', '')), height=80)
+
+            st.divider()
+            if st.button("🧠 AI(Vision+Text) 통합 심리평가보고서 생성", use_container_width=True, type="primary"):
+                with st.spinner("AI 임상심리사가 수치 데이터와 그림(Vision)을 통합 분석 중입니다..."):
+                    sct_lines = "\n".join([f"- {s}{a}" for s, a in zip(db["sct_starts"], st.session_state.get('sct', []))])
+                    score_summary = str({k: v['total'] for k, v in score_stats.items()})
+
+                    prompt = f"""
+                    당신은 20년 경력의 대학병원 수석 임상심리사입니다.
+                    내담자의 객관식 점수, SCT 답변, 그리고 첨부된 '직접 그린 투사 그림'들을 시각적으로 심층 분석하여 소견서를 작성하세요.
+
+                    [내담자: {u['name']} / {u['gen']}]
+                    1. 점수 요약: {score_summary}
+                    2. SCT 응답: {sct_lines}
+                    
+                    [그림 분석 및 작성 지침]
+                    - 첨부된 이미지를 직접 눈으로 확인하고(HTP, PITR, KFD 순서), 필압/크기/생략 요소 등을 전문적으로 서술하세요.
+                    - 반드시 객관적인 전문가 평어체(~함, ~시사됨)를 사용하세요.
+                    - 목차:
+                      1. 인지 및 지능 기능
+                      2. 정서 및 심리적 적응 (점수 + 그림 통합)
+                      3. 투사 검사(그림) 정밀 분석 소견
+                      4. 치료적 제언
+                    """
+                    
+                    contents = [prompt]
+                    if 'clinical_images' in st.session_state:
+                        for k, img in st.session_state['clinical_images'].items():
+                            contents.append(img)
+                    
+                    try:
+                        resp = model.generate_content(contents)
+                        st.session_state['final_report'] = resp.text
+                        st.toast("✅ 보고서 생성 완료!", icon="🧠")
+                    except Exception as e:
+                        st.error(f"AI 연동 오류: {e}")
+
+            if 'final_report' in st.session_state:
                 st.markdown(f"""
-                <div class="score-card">
-                    <div class="score-val" style="color:{info.get('color','#005088')};">{stat['total']}</div>
-                    <div class="score-label">{info.get('label', key).split('(')[0]}</div>
+                <div class="report-header">
+                    <h2 style="margin:0 0 8px;">종합 심리평가보고서</h2>
+                    <div style="opacity:0.9; font-size:14px;">
+                        내담자: <strong>{u['name']}</strong> &nbsp;|&nbsp; 성별: <strong>{u['gen']}</strong> &nbsp;|&nbsp; 
+                        생년월일: <strong>{u['birth']}</strong> &nbsp;|&nbsp; 의뢰: <strong>{u['rel']}</strong>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
+                st.markdown(st.session_state['final_report'])
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        for key, stat in score_stats.items():
-            info = SCALE_INFO.get(key, {})
-            components.html(t_score_html(info.get('label', key), stat['total'], stat['max'], color=info.get('color', '#005088'), description=info.get('desc', '')), height=80)
-
-        st.divider()
-        if st.button("🧠 AI(Vision+Text) 통합 심리평가보고서 생성", use_container_width=True, type="primary"):
-            with st.spinner("AI 임상심리사가 수치 데이터와 그림(Vision)을 통합 분석 중입니다..."):
-                sct_lines = "\n".join([f"- {s}{a}" for s, a in zip(db["sct_starts"], st.session_state.get('sct', []))])
-                score_summary = str({k: v['total'] for k, v in score_stats.items()})
-
-                prompt = f"""
-                당신은 20년 경력의 대학병원 수석 임상심리사입니다.
-                내담자의 객관식 점수, SCT 답변, 그리고 첨부된 '직접 그린 투사 그림'들을 시각적으로 심층 분석하여 소견서를 작성하세요.
-
-                [내담자: {u['name']} / {u['gen']}]
-                1. 점수 요약: {score_summary}
-                2. SCT 응답: {sct_lines}
-                
-                [그림 분석 및 작성 지침]
-                - 첨부된 이미지를 직접 눈으로 확인하고(HTP, PITR, KFD 순서), 필압/크기/생략 요소 등을 전문적으로 서술하세요.
-                - 반드시 객관적인 전문가 평어체(~함, ~시사됨)를 사용하세요.
-                - 목차:
-                  1. 인지 및 지능 기능
-                  2. 정서 및 심리적 적응 (점수 + 그림 통합)
-                  3. 투사 검사(그림) 정밀 분석 소견
-                  4. 치료적 제언
-                """
-                
-                contents = [prompt]
-                if 'clinical_images' in st.session_state:
-                    for k, img in st.session_state['clinical_images'].items():
-                        contents.append(img)
-                
-                try:
-                    resp = model.generate_content(contents)
-                    st.session_state['final_report'] = resp.text
-                    st.toast("✅ 보고서 생성 완료!", icon="🧠")
-                except Exception as e:
-                    st.error(f"AI 연동 오류: {e}")
-
-        if 'final_report' in st.session_state:
-            st.markdown(f"""
-            <div class="report-header">
-                <h2 style="margin:0 0 8px;">종합 심리평가보고서</h2>
-                <div style="opacity:0.9; font-size:14px;">
-                    내담자: <strong>{u['name']}</strong> &nbsp;|&nbsp; 성별: <strong>{u['gen']}</strong> &nbsp;|&nbsp; 
-                    생년월일: <strong>{u['birth']}</strong> &nbsp;|&nbsp; 의뢰: <strong>{u['rel']}</strong>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            st.markdown(st.session_state['final_report'])
-
-            st.subheader("🖨️ 보고서 인쇄")
-            if st.button("🖨️ 인쇄 / PDF 저장", use_container_width=True):
-                components.html("<script>window.print();</script>", height=0)
+                st.subheader("🖨️ 보고서 인쇄")
+                if st.button("🖨️ 인쇄 / PDF 저장", use_container_width=True):
+                    components.html("<script>window.print();</script>", height=0)
